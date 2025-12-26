@@ -14,7 +14,7 @@ console = Console()
 def dev():
     """Start development server (auto-detects frontend or backend)."""
     ctx = get_context()
-    
+
     # Try to detect current context first
     if ctx.is_frontend:
         console.print("🚀 Starting Next.js development server...\n")
@@ -38,7 +38,10 @@ def dev():
             )
         else:
             console.print("❌ Ambiguous: both FE and BE projects found", style="red")
-            console.print("Run [bold]dh dev[/bold] from within a specific project directory", style="yellow")
+            console.print(
+                "Run [bold]dh dev[/bold] from within a specific project directory",
+                style="yellow",
+            )
             raise typer.Exit(1)
 
 
@@ -46,7 +49,7 @@ def dev():
 def lint():
     """Run linter (auto-detects frontend or backend)."""
     ctx = get_context()
-    
+
     if ctx.is_frontend:
         console.print("🔍 Running ESLint...\n")
         run_command("npm run lint", cwd=ctx.frontend_path)
@@ -67,10 +70,13 @@ def lint():
 def format():
     """Format code (auto-detects frontend or backend)."""
     ctx = get_context()
-    
+
     if ctx.is_frontend:
         console.print("🎨 Formatting frontend code...\n")
-        console.print("⚠️  ESLint doesn't support auto-formatting. Use Prettier instead.", style="yellow")
+        console.print(
+            "⚠️  ESLint doesn't support auto-formatting. Use Prettier instead.",
+            style="yellow",
+        )
     elif ctx.is_backend:
         console.print("🎨 Running ruff format...\n")
         run_command("uv run ruff format .", cwd=ctx.backend_path)
@@ -84,14 +90,17 @@ def format():
             console.print("🔧 Running ruff check --fix (backend)...\n")
             run_command("uv run ruff check --fix .", cwd=ctx.backend_path)
         if ctx.has_frontend:
-            console.print("⚠️  Frontend formatting requires Prettier (not included)", style="yellow")
+            console.print(
+                "⚠️  Frontend formatting requires Prettier (not included)",
+                style="yellow",
+            )
 
 
 @app.command()
 def test():
     """Run tests (auto-detects frontend or backend)."""
     ctx = get_context()
-    
+
     if ctx.is_backend:
         console.print("🧪 Running tests...\n")
         run_command("uv run pytest", cwd=ctx.backend_path)

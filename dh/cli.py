@@ -56,10 +56,10 @@ def main(
 ) -> None:
     """
     DevHand CLI - CLI tool to improve devX for webapps.
-    
+
     Context-aware commands that detect whether you're working with
     frontend (Next.js) or backend (FastAPI) projects.
-    
+
     Common commands:
       dh setup     - One-time environment setup
       dh validate  - Check environment health

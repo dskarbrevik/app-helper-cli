@@ -55,4 +55,5 @@ markers = [
 filterwarnings = [
     "ignore::DeprecationWarning:pyiceberg",
     "ignore::pydantic.warnings.PydanticDeprecatedSince212",
+    "ignore::DeprecationWarning:supabase",
 ]

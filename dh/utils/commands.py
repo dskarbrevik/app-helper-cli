@@ -22,13 +22,13 @@ def run_command(
     capture_output: bool = False,
 ) -> subprocess.CompletedProcess:
     """Run a shell command.
-    
+
     Args:
         command: Command string or list of arguments
         cwd: Working directory for command
         check: If True, raise exception on non-zero exit
         capture_output: If True, capture stdout/stderr
-    
+
     Returns:
         CompletedProcess instance
     """
@@ -36,7 +36,7 @@ def run_command(
         shell = True
     else:
         shell = False
-    
+
     return subprocess.run(
         command,
         cwd=cwd,
@@ -60,7 +60,7 @@ def check_tool_version(command: str, version_flag: str = "--version") -> Optiona
     """Check if a tool is installed and return its version."""
     if not check_command_exists(command):
         return None
-    
+
     try:
         version = get_command_output([command, version_flag])
         return version
