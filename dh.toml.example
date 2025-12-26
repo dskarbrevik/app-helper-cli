@@ -1,0 +1,15 @@
+# DevHand Configuration (version controlled)
+# This file contains non-sensitive project configuration
+
+[project]
+# Paths to frontend and backend projects (relative to workspace root)
+# Leave commented to use auto-detection
+# frontend_path = "hello-world-fe"
+# backend_path = "hello-world-be"
+
+[preferences]
+# Disable warnings when project detection succeeds
+disable_detection_warnings = false
+
+# Automatically install dependencies during setup
+auto_install_dependencies = true
