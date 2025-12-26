@@ -45,35 +45,24 @@ class Config(BaseModel):
 
 
 def load_config(workspace_root: Path) -> Config:
-    """Load configuration from dh.toml and .dh.local.toml.
+    """Load configuration from .dh.local.toml.
     
-    .dh.local.toml takes precedence over dh.toml for overlapping keys.
+    All configuration (project paths, preferences, database credentials) 
+    is stored in a single gitignored .dh.local.toml file.
     """
     config_data: dict[str, Any] = {}
     
-    # Load dh.toml (version controlled)
-    dh_toml = workspace_root / "dh.toml"
-    if dh_toml.exists():
-        with open(dh_toml, "rb") as f:
-            config_data = tomllib.load(f)
-    
-    # Load .dh.local.toml (gitignored secrets)
+    # Load .dh.local.toml (single config file)
     local_toml = workspace_root / ".dh.local.toml"
     if local_toml.exists():
         with open(local_toml, "rb") as f:
-            local_data = tomllib.load(f)
-            # Merge with config_data, local takes precedence
-            for key, value in local_data.items():
-                if key in config_data and isinstance(config_data[key], dict):
-                    config_data[key].update(value)
-                else:
-                    config_data[key] = value
+            config_data = tomllib.load(f)
     
     return Config(**config_data)
 
 
 def save_local_config(workspace_root: Path, config: Config) -> None:
-    """Save secrets to .dh.local.toml."""
+    """Save configuration to .dh.local.toml."""
     local_toml = workspace_root / ".dh.local.toml"
     
     # Only save database secrets to local config

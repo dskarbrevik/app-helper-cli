@@ -1,5 +1,18 @@
-# DevHand Local Configuration (gitignored, contains secrets)
-# Copy this to .dh.local.toml and fill in your credentials
+# DevHand Configuration
+# Copy this to .dh.local.toml (gitignored - do not commit to version control)
+
+[project]
+# Paths to frontend and backend projects (relative to workspace root)
+# Leave commented to use auto-detection
+# frontend_path = "hello-world-fe"
+# backend_path = "hello-world-be"
+
+[preferences]
+# Disable warnings when project detection succeeds
+disable_detection_warnings = false
+
+# Automatically install dependencies during setup
+auto_install_dependencies = true
 
 [db]
 # Database URL (Supabase project URL)

@@ -1,5 +1,5 @@
-# DevHand Configuration (version controlled)
-# This file contains non-sensitive project configuration
+# DevHand Configuration
+# Copy this to .dh.local.toml (gitignored - do not commit to version control)
 
 [project]
 # Paths to frontend and backend projects (relative to workspace root)
@@ -13,3 +13,19 @@ disable_detection_warnings = false
 
 # Automatically install dependencies during setup
 auto_install_dependencies = true
+
+[db]
+# Database URL (Supabase project URL)
+url = "https://your-project-ref.supabase.co"
+
+# Service role key (from Supabase Dashboard > Settings > API)
+service_role_key = "your-service-role-key"
+
+# Anonymous key (from Supabase Dashboard > Settings > API)
+anon_key = "your-anon-key"
+
+# Database password (from Supabase Dashboard > Settings > Database)
+password = "your-database-password"
+
+# Project reference (extracted from URL automatically, but can be overridden)
+# project_ref = "your-project-ref"
