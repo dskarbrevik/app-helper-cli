@@ -42,6 +42,7 @@ From your workspace root (parent directory of frontend/backend projects):
 
 - `dh setup` - Interactive environment setup
 - `dh validate` - Check environment health
+- `dh validate --deploy` - Check for deployment completion
 - `dh dev` - Start dev server (context-aware)
 - `dh build` - Build for production
 - `dh build --docker` - Build Docker image
