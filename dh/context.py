@@ -28,13 +28,19 @@ class ProjectContext:
         """
         self.start_path = Path(start_path or Path.cwd())
         self.workspace_root = find_workspace_root(self.start_path)
-        self.config = load_config(self.workspace_root)
 
         # Detect current context
         self.current_type = detect_project_type(self.start_path)
 
         # Find all projects in workspace
         self.projects = find_project_dirs(self.workspace_root)
+
+        # Load config with detected paths
+        self.config = load_config(
+            self.workspace_root,
+            frontend_path=self.projects.get("frontend"),
+            backend_path=self.projects.get("backend")
+        )
 
         # Override with config if provided
         if self.config.project.frontend_path:

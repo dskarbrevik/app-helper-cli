@@ -7,7 +7,7 @@ from rich.console import Console
 
 from dh.context import get_context
 from dh.utils.commands import check_command_exists, check_tool_version, run_command
-from dh.utils.config import save_local_config, save_project_config
+from dh.utils.config import save_frontend_env, save_backend_env
 from dh.utils.prompts import (
     display_error,
     display_info,
@@ -89,6 +89,7 @@ def setup():
         "Configure database (Supabase) credentials?", default=True
     )
 
+    api_url = None
     if configure_db:
         db_url = prompt_text(
             "Database URL (e.g., https://xxx.supabase.co)",
@@ -99,34 +100,60 @@ def setup():
         match = re.search(r"https://([^.]+)\.supabase\.co", db_url)
         project_ref = match.group(1) if match else None
 
-        service_role_key = prompt_text(
-            "Service role key (from Supabase dashboard)",
-            default=ctx.config.db.service_role_key,
-            password=True,
-        )
-
-        anon_key = prompt_text(
-            "Anonymous key (from Supabase dashboard)",
-            default=ctx.config.db.anon_key,
+        console.print("\nℹ️  Find keys in: Supabase Dashboard > Settings > API", style="blue")
+        console.print("   Copy these to Vercel for deployment\n")
+        
+        public_key = prompt_text(
+            "Public/Anon key (sb_publishable_* or anon JWT) - for Vercel",
+            default=ctx.config.db.public_key,
             password=False,
         )
 
+        console.print("\nℹ️  The following are for devhand CLI operations only:", style="blue")
+        console.print("   (NOT needed in Vercel deployment)\n")
+
+        secret_key = prompt_text(
+            "Secret/Service role key (sb_secret_* or service_role JWT) - for CLI",
+            default=ctx.config.db.secret_key,
+            password=True,
+        )
+
         db_password = prompt_text(
-            "Database password (for migrations)",
+            "Database password - for migrations",
             default=ctx.config.db.password,
             password=True,
         )
 
+        access_token = prompt_text(
+            "Supabase access token - for CLI (from https://supabase.com/dashboard/account/tokens)",
+            default=ctx.config.db.access_token,
+            password=True,
+        )
+
+        # Ask for API URL if backend exists
+        if ctx.has_backend:
+            api_url = prompt_text(
+                "Backend API URL (for frontend, e.g., Railway URL) - for Vercel",
+                default="http://localhost:8000",
+            )
+
         # Update config
         ctx.config.db.url = db_url
-        ctx.config.db.service_role_key = service_role_key
-        ctx.config.db.anon_key = anon_key
+        ctx.config.db.public_key = public_key
+        ctx.config.db.secret_key = secret_key
         ctx.config.db.password = db_password
+        ctx.config.db.access_token = access_token
         ctx.config.db.project_ref = project_ref
 
-        # Save to .dh.local.toml
-        save_local_config(ctx.workspace_root, ctx.config)
-        display_success("Database credentials saved to .dh.local.toml")
+        # Save to frontend .env
+        if ctx.has_frontend:
+            save_frontend_env(ctx.frontend_path, ctx.config, api_url)
+            display_success(f"Configuration saved to {ctx.frontend_path}/.env")
+
+        # Save to backend .env
+        if ctx.has_backend:
+            save_backend_env(ctx.backend_path, ctx.config)
+            display_success(f"Configuration saved to {ctx.backend_path}/.env")
 
     # Step 4: Install dependencies
     display_step(4, "Installing dependencies...")
@@ -147,39 +174,39 @@ def setup():
         except Exception as e:
             display_error(f"Failed to install backend dependencies: {e}")
 
-    # Step 5: Update .gitignore
-    display_step(5, "Updating .gitignore...")
+    # Step 5: Verify .env files are gitignored
+    display_step(5, "Verifying .gitignore...")
 
-    gitignore_path = ctx.workspace_root / ".gitignore"
-    gitignore_entries = [".dh.local.toml"]
-
-    if gitignore_path.exists():
-        with open(gitignore_path) as f:
-            existing = f.read()
-
-        to_add = [entry for entry in gitignore_entries if entry not in existing]
-
-        if to_add:
-            with open(gitignore_path, "a") as f:
-                f.write("\n# DevHand CLI\n")
-                for entry in to_add:
-                    f.write(f"{entry}\n")
-            display_success("Updated .gitignore")
+    # Check frontend .gitignore
+    if ctx.has_frontend:
+        fe_gitignore = ctx.frontend_path / ".gitignore"
+        if fe_gitignore.exists():
+            with open(fe_gitignore) as f:
+                content = f.read()
+                if ".env" in content:
+                    display_success("Frontend .env already gitignored")
+                else:
+                    display_warning("Frontend .env not in .gitignore (should be there by default)")
         else:
-            display_info(".gitignore already configured")
-    else:
-        with open(gitignore_path, "w") as f:
-            f.write("# DevHand CLI\n")
-            for entry in gitignore_entries:
-                f.write(f"{entry}\n")
-        display_success("Created .gitignore")
+            display_warning("Frontend .gitignore not found")
 
-    # Save project config
-    save_project_config(ctx.workspace_root, ctx.config)
+    # Check backend .gitignore
+    if ctx.has_backend:
+        be_gitignore = ctx.backend_path / ".gitignore"
+        if be_gitignore.exists():
+            with open(be_gitignore) as f:
+                content = f.read()
+                if ".env" in content:
+                    display_success("Backend .env already gitignored")
+                else:
+                    display_warning("Backend .env not in .gitignore (should be there by default)")
+        else:
+            display_warning("Backend .gitignore not found")
 
     # Final message
     console.print("\n✨ [bold green]Setup complete![/bold green]\n")
-    console.print("Next steps:")
+    console.print("Configuration saved to .env files in each repo")
+    console.print("\nNext steps:")
     console.print("  1. Run [bold]dh validate[/bold] to verify everything")
     console.print("  2. Run [bold]dh db setup[/bold] to initialize database tables")
     console.print("  3. Run [bold]dh dev[/bold] to start development server")
