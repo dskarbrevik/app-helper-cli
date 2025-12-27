@@ -22,7 +22,7 @@ class DatabaseClient:
         project_ref: Optional[str] = None,
     ):
         """Initialize database client.
-        
+
         Args:
             url: Supabase project URL
             secret_key: Secret API key (sb_secret_* or legacy service_role JWT)
@@ -32,7 +32,7 @@ class DatabaseClient:
         self.url = url
         self.secret_key = secret_key
         self.db_password = db_password
-        
+
         # Extract project ref from URL if not provided
         if not project_ref:
             match = re.search(r"https://([^.]+)\.supabase\.co", url)
@@ -61,8 +61,14 @@ class DatabaseClient:
             return True
         except Exception as e:
             console.print(f"Connection test failed: {e}", style="red")
-            console.print("\nℹ️  Make sure you're using the secret key (sb_secret_* or service_role JWT), not the public key", style="blue")
-            console.print("   Find it in: Supabase Dashboard > Settings > API > Secret keys tab", style="blue")
+            console.print(
+                "\nℹ️  Make sure you're using the secret key (sb_secret_* or service_role JWT), not the public key",
+                style="blue",
+            )
+            console.print(
+                "   Find it in: Supabase Dashboard > Settings > API > Secret keys tab",
+                style="blue",
+            )
             return False
 
     def get_user_by_email(self, email: str) -> Optional[dict]:
@@ -209,13 +215,13 @@ def create_db_client(
     project_ref: Optional[str] = None,
 ) -> DatabaseClient:
     """Create a database client instance.
-    
+
     Args:
         url: Supabase project URL
         secret_key: Secret API key (sb_secret_* or legacy service_role JWT)
         db_password: Database password for direct PostgreSQL access
         project_ref: Project reference ID
-    
+
     Returns:
         DatabaseClient instance
     """

@@ -39,7 +39,7 @@ class ProjectContext:
         self.config = load_config(
             self.workspace_root,
             frontend_path=self.projects.get("frontend"),
-            backend_path=self.projects.get("backend")
+            backend_path=self.projects.get("backend"),
         )
 
         # Override with config if provided

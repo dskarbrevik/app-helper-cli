@@ -1,6 +1,5 @@
 """Configuration file handling using .env files in FE and BE repos."""
 
-import os
 import re
 from pathlib import Path
 from typing import Optional
@@ -63,7 +62,11 @@ def _load_env_file(env_path: Path) -> dict[str, str]:
     return env_vars
 
 
-def load_config(workspace_root: Path, frontend_path: Optional[Path] = None, backend_path: Optional[Path] = None) -> Config:
+def load_config(
+    workspace_root: Path,
+    frontend_path: Optional[Path] = None,
+    backend_path: Optional[Path] = None,
+) -> Config:
     """Load configuration from .env files in frontend and backend directories.
 
     Frontend .env contains:
@@ -92,7 +95,9 @@ def load_config(workspace_root: Path, frontend_path: Optional[Path] = None, back
             if "NEXT_PUBLIC_SUPABASE_URL" in fe_env:
                 config_data["db"]["url"] = fe_env["NEXT_PUBLIC_SUPABASE_URL"]
                 # Extract project_ref from URL
-                match = re.search(r"https://([^.]+)\.supabase\.co", fe_env["NEXT_PUBLIC_SUPABASE_URL"])
+                match = re.search(
+                    r"https://([^.]+)\.supabase\.co", fe_env["NEXT_PUBLIC_SUPABASE_URL"]
+                )
                 if match:
                     config_data["db"]["project_ref"] = match.group(1)
 
@@ -111,7 +116,7 @@ def load_config(workspace_root: Path, frontend_path: Optional[Path] = None, back
     # Load from backend .env if needed (for future use)
     if backend_path:
         be_env_path = backend_path / ".env"
-        be_env = _load_env_file(be_env_path)
+        _load_env_file(be_env_path)
         # Backend-specific config can be added here as needed
 
     # Store paths
@@ -123,7 +128,9 @@ def load_config(workspace_root: Path, frontend_path: Optional[Path] = None, back
     return Config(**config_data)
 
 
-def save_frontend_env(frontend_path: Path, config: Config, api_url: Optional[str] = None) -> None:
+def save_frontend_env(
+    frontend_path: Path, config: Config, api_url: Optional[str] = None
+) -> None:
     """Save database configuration to frontend .env file."""
     env_path = frontend_path / ".env"
 
@@ -139,7 +146,7 @@ def save_frontend_env(frontend_path: Path, config: Config, api_url: Optional[str
         existing_env["NEXT_PUBLIC_SUPABASE_KEY"] = config.db.public_key
     if api_url:
         existing_env["NEXT_PUBLIC_API_URL"] = api_url
-    
+
     # Update with CLI-only values (not needed for Vercel deployment)
     if config.db.secret_key:
         existing_env["SUPABASE_SECRET_KEY"] = config.db.secret_key
@@ -156,12 +163,18 @@ def save_frontend_env(frontend_path: Path, config: Config, api_url: Optional[str
         if "NEXT_PUBLIC_API_URL" in existing_env:
             f.write(f"NEXT_PUBLIC_API_URL={existing_env['NEXT_PUBLIC_API_URL']}\n")
         if "NEXT_PUBLIC_SUPABASE_URL" in existing_env:
-            f.write(f"NEXT_PUBLIC_SUPABASE_URL={existing_env['NEXT_PUBLIC_SUPABASE_URL']}\n")
+            f.write(
+                f"NEXT_PUBLIC_SUPABASE_URL={existing_env['NEXT_PUBLIC_SUPABASE_URL']}\n"
+            )
         if "NEXT_PUBLIC_SUPABASE_KEY" in existing_env:
-            f.write(f"NEXT_PUBLIC_SUPABASE_KEY={existing_env['NEXT_PUBLIC_SUPABASE_KEY']}\n")
-        
+            f.write(
+                f"NEXT_PUBLIC_SUPABASE_KEY={existing_env['NEXT_PUBLIC_SUPABASE_KEY']}\n"
+            )
+
         f.write("\n# === For DevHand CLI Only ===\n")
-        f.write("# These are used by 'dh db' commands and are NOT needed in Vercel:\n\n")
+        f.write(
+            "# These are used by 'dh db' commands and are NOT needed in Vercel:\n\n"
+        )
         if "SUPABASE_SECRET_KEY" in existing_env:
             f.write(f"SUPABASE_SECRET_KEY={existing_env['SUPABASE_SECRET_KEY']}\n")
         if "SUPABASE_DB_PASSWORD" in existing_env:
@@ -175,9 +188,8 @@ def save_backend_env(backend_path: Path, config: Config) -> None:
     env_path = backend_path / ".env"
 
     # Read existing .env if it exists
-    existing_env = {}
     if env_path.exists():
-        existing_env = _load_env_file(env_path)
+        _load_env_file(env_path)
 
     # Backend-specific variables can be added here as needed
     # For now, keeping it minimal

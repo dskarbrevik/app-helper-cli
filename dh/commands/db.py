@@ -22,7 +22,7 @@ def get_db_client():
         display_info("Run 'dh setup' to configure database credentials")
         display_info("Note: Database operations require the secret/service_role key")
         raise typer.Exit(1)
-    
+
     return create_db_client(
         ctx.config.db.url,
         ctx.config.db.secret_key,

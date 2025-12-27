@@ -100,16 +100,20 @@ def setup():
         match = re.search(r"https://([^.]+)\.supabase\.co", db_url)
         project_ref = match.group(1) if match else None
 
-        console.print("\nℹ️  Find keys in: Supabase Dashboard > Settings > API", style="blue")
+        console.print(
+            "\nℹ️  Find keys in: Supabase Dashboard > Settings > API", style="blue"
+        )
         console.print("   Copy these to Vercel for deployment\n")
-        
+
         public_key = prompt_text(
             "Public/Anon key (sb_publishable_* or anon JWT) - for Vercel",
             default=ctx.config.db.public_key,
             password=False,
         )
 
-        console.print("\nℹ️  The following are for devhand CLI operations only:", style="blue")
+        console.print(
+            "\nℹ️  The following are for devhand CLI operations only:", style="blue"
+        )
         console.print("   (NOT needed in Vercel deployment)\n")
 
         secret_key = prompt_text(
@@ -186,7 +190,9 @@ def setup():
                 if ".env" in content:
                     display_success("Frontend .env already gitignored")
                 else:
-                    display_warning("Frontend .env not in .gitignore (should be there by default)")
+                    display_warning(
+                        "Frontend .env not in .gitignore (should be there by default)"
+                    )
         else:
             display_warning("Frontend .gitignore not found")
 
@@ -199,7 +205,9 @@ def setup():
                 if ".env" in content:
                     display_success("Backend .env already gitignored")
                 else:
-                    display_warning("Backend .env not in .gitignore (should be there by default)")
+                    display_warning(
+                        "Backend .env not in .gitignore (should be there by default)"
+                    )
         else:
             display_warning("Backend .gitignore not found")
 
