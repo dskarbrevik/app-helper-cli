@@ -52,7 +52,7 @@ def mock_context(tmp_path: Path):
             self.config = Config(
                 db=DatabaseConfig(
                     url="https://test.supabase.co",
-                    service_role_key="test-key",
+                    secret_key="test-key",
                     password="test-pass",
                     project_ref="test-ref",
                 )

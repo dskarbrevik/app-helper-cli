@@ -40,6 +40,13 @@ def validate():
             display_error("npm not installed")
             issues.append("npm missing")
 
+        # Check .env
+        if (ctx.frontend_path / ".env").exists():
+            display_success(".env exists")
+        else:
+            display_warning(".env not found - run 'dh setup'")
+            issues.append("Frontend .env not configured")
+
         # Check node_modules
         if (ctx.frontend_path / "node_modules").exists():
             display_success("node_modules exists")
@@ -76,6 +83,12 @@ def validate():
             display_error("uv not installed")
             issues.append("uv missing")
 
+        # Check .env
+        if (ctx.backend_path / ".env").exists():
+            display_success(".env exists")
+        else:
+            display_warning(".env not found (optional for backend)")
+
         # Check .venv
         if (ctx.backend_path / ".venv").exists():
             display_success(".venv exists")
@@ -108,11 +121,11 @@ def validate():
         display_success(f"Database URL configured: {ctx.config.db.url}")
 
         # Test connection
-        if ctx.config.db.service_role_key:
+        if ctx.config.db.secret_key:
             try:
                 db_client = create_db_client(
                     ctx.config.db.url,
-                    ctx.config.db.service_role_key,
+                    ctx.config.db.secret_key,
                     ctx.config.db.password,
                     ctx.config.db.project_ref,
                 )
@@ -125,7 +138,7 @@ def validate():
                 display_error(f"Database connection error: {e}")
                 issues.append("Database connection error")
         else:
-            display_warning("Service role key not configured")
+            display_warning("Secret key not configured")
             issues.append("Database credentials incomplete")
     else:
         display_warning("Database not configured - run 'dh setup'")

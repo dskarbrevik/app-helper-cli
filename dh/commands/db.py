@@ -17,14 +17,15 @@ def get_db_client():
     """Get database client from config."""
     ctx = get_context()
 
-    if not ctx.config.db.url or not ctx.config.db.service_role_key:
+    if not ctx.config.db.url or not ctx.config.db.secret_key:
         display_error("Database not configured")
         display_info("Run 'dh setup' to configure database credentials")
+        display_info("Note: Database operations require the secret/service_role key")
         raise typer.Exit(1)
 
     return create_db_client(
         ctx.config.db.url,
-        ctx.config.db.service_role_key,
+        ctx.config.db.secret_key,
         ctx.config.db.password,
         ctx.config.db.project_ref,
     )

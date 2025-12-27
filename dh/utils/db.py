@@ -17,7 +17,7 @@ class DatabaseClient:
     def __init__(
         self,
         url: str,
-        service_role_key: str,
+        secret_key: str,  # sb_secret_* (new) or service_role JWT (legacy)
         db_password: Optional[str] = None,
         project_ref: Optional[str] = None,
     ):
@@ -25,12 +25,12 @@ class DatabaseClient:
 
         Args:
             url: Supabase project URL
-            service_role_key: Service role key for admin operations
+            secret_key: Secret API key (sb_secret_* or legacy service_role JWT)
             db_password: Database password for direct PostgreSQL access
             project_ref: Project reference ID (extracted from URL if not provided)
         """
         self.url = url
-        self.service_role_key = service_role_key
+        self.secret_key = secret_key
         self.db_password = db_password
 
         # Extract project ref from URL if not provided
@@ -44,7 +44,7 @@ class DatabaseClient:
             self.project_ref = project_ref
 
         # Initialize Supabase client
-        self.client: Client = create_client(url, service_role_key)
+        self.client: Client = create_client(url, secret_key)
 
     @property
     def db_host(self) -> str:
@@ -56,13 +56,19 @@ class DatabaseClient:
     def test_connection(self) -> bool:
         """Test connection to Supabase."""
         try:
-            # Simple query to test connection
-            self.client.table("_realtime_schema_migrations").select("*").limit(
-                1
-            ).execute()
+            # Test by listing users (requires secret key with admin permissions)
+            self.client.auth.admin.list_users()
             return True
         except Exception as e:
             console.print(f"Connection test failed: {e}", style="red")
+            console.print(
+                "\nℹ️  Make sure you're using the secret key (sb_secret_* or service_role JWT), not the public key",
+                style="blue",
+            )
+            console.print(
+                "   Find it in: Supabase Dashboard > Settings > API > Secret keys tab",
+                style="blue",
+            )
             return False
 
     def get_user_by_email(self, email: str) -> Optional[dict]:
@@ -204,7 +210,7 @@ class DatabaseClient:
 
 def create_db_client(
     url: str,
-    service_role_key: str,
+    secret_key: str,  # sb_secret_* (new) or service_role JWT (legacy)
     db_password: Optional[str] = None,
     project_ref: Optional[str] = None,
 ) -> DatabaseClient:
@@ -212,11 +218,11 @@ def create_db_client(
 
     Args:
         url: Supabase project URL
-        service_role_key: Service role key for admin operations
+        secret_key: Secret API key (sb_secret_* or legacy service_role JWT)
         db_password: Database password for direct PostgreSQL access
         project_ref: Project reference ID
 
     Returns:
         DatabaseClient instance
     """
-    return DatabaseClient(url, service_role_key, db_password, project_ref)
+    return DatabaseClient(url, secret_key, db_password, project_ref)
