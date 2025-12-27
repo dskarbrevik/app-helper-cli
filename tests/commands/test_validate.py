@@ -91,7 +91,7 @@ class TestValidateCommand:
     def test_validate_no_database_config(self, mock_context):
         """Test validation handles missing database config."""
         mock_context.config.db.url = None
-        mock_context.config.db.service_role_key = None
+        mock_context.config.db.secret_key = None
 
         with (
             patch("dh.commands.validate.check_command_exists", return_value=True),

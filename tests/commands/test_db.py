@@ -26,6 +26,7 @@ class TestDBSetupCommand:
         with patch("dh.commands.db.create_db_client") as mock_create:
             mock_client = mock_db_client
             mock_client.test_connection.return_value = True
+            mock_client.run_migrations.return_value = True
             mock_create.return_value = mock_client
 
             # Run db setup - should attempt to apply migrations
@@ -51,13 +52,17 @@ class TestDBSetupCommand:
         """Test db setup fails without database configuration."""
         # Remove database configuration
         mock_context.config.db.url = None
-        mock_context.config.db.service_role_key = None
+        mock_context.config.db.secret_key = None
 
         # Should raise Exit
         with pytest.raises(typer.Exit) as exc_info:
             db.setup()
 
         assert exc_info.value.exit_code == 1
+
+
+# Tests for sync_users are difficult to write without invoking the actual typer command
+# due to the OptionInfo decorator. These would be better done as integration tests.
 
 
 # Note: migrate, reset, and seed commands don't exist yet
@@ -75,10 +80,29 @@ class TestDBStatusCommand:
             mock_client.test_connection.return_value = True
             mock_create.return_value = mock_client
 
-            try:
-                db.status()
-            except typer.Exit:
-                pass
+            db.status()
 
             # Verify that we attempted to check the connection
-            assert mock_create.called or mock_client.test_connection.called
+            assert mock_create.called
+            assert mock_client.test_connection.called
+
+    def test_db_status_no_url(self, mock_context):
+        """Test db status fails without database URL."""
+        mock_context.config.db.url = None
+
+        with pytest.raises(typer.Exit) as exc_info:
+            db.status()
+
+        assert exc_info.value.exit_code == 1
+
+    def test_db_status_connection_failed(self, mock_context, mock_db_client):
+        """Test db status when connection fails."""
+        with patch("dh.commands.db.create_db_client") as mock_create:
+            mock_client = mock_db_client
+            mock_client.test_connection.return_value = False
+            mock_create.return_value = mock_client
+
+            with pytest.raises(typer.Exit) as exc_info:
+                db.status()
+
+            assert exc_info.value.exit_code == 1
