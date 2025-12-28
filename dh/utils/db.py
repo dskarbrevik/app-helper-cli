@@ -94,7 +94,11 @@ class DatabaseClient:
         except Exception as e:
             # Check if it's a duplicate key error
             error_str = str(e).lower()
-            if "duplicate" in error_str or "already exists" in error_str or "unique" in error_str:
+            if (
+                "duplicate" in error_str
+                or "already exists" in error_str
+                or "unique" in error_str
+            ):
                 return False  # Already exists
             console.print(f"Error inserting user: {e}", style="yellow")
             return False
@@ -105,7 +109,12 @@ class DatabaseClient:
         Returns True if user is allowed, False otherwise.
         """
         try:
-            result = self.client.table("allowed_users").select("*").eq("user_id", user_id).execute()
+            result = (
+                self.client.table("allowed_users")
+                .select("*")
+                .eq("user_id", user_id)
+                .execute()
+            )
             return len(result.data) > 0
         except Exception as e:
             console.print(f"Error checking user: {e}", style="yellow")
@@ -119,11 +128,15 @@ class DatabaseClient:
         try:
             result = self.client.table(table_name).select("*").limit(1).execute()
             # If we can query it and get a result object with data attribute, table exists
-            return hasattr(result, 'data')
+            return hasattr(result, "data")
         except Exception as e:
             # Check if it's a "relation does not exist" type error
             error_msg = str(e).lower()
-            if "does not exist" in error_msg or "not found" in error_msg or "relation" in error_msg:
+            if (
+                "does not exist" in error_msg
+                or "not found" in error_msg
+                or "relation" in error_msg
+            ):
                 return False
             # For other errors, we can't determine - assume it doesn't exist
             console.print(f"Could not verify table {table_name}: {e}", style="dim")
@@ -207,7 +220,7 @@ class DatabaseClient:
 
     def _execute_sql(self, sql: str) -> bool:
         """Execute raw SQL using Supabase's PostgreSQL connection via RPC.
-        
+
         Uses the postgrest query endpoint to execute SQL.
         """
         if not self.project_ref:
@@ -217,59 +230,62 @@ class DatabaseClient:
         try:
             # Use Supabase's query endpoint for SQL execution
             # This requires the service_role key or secret key with appropriate permissions
-            url = f"{self.url}/rest/v1/rpc/exec"
-            
+
             # Try direct SQL execution via PostgREST
             # Note: This may not work for DDL statements in some Supabase configurations
             # In that case, we'll use the Management API
-            headers = {
-                "apikey": self.secret_key,
-                "Authorization": f"Bearer {self.secret_key}",
-                "Content-Type": "application/json",
-                "Prefer": "return=minimal"
-            }
-            
+
             # Split SQL into individual statements
             statements = [s.strip() for s in sql.split(";") if s.strip()]
-            
+
             for statement in statements:
                 if not statement:
                     continue
-                    
+
                 # Use the Management API for DDL operations
                 # Format: POST https://api.supabase.com/v1/projects/{ref}/database/query
                 mgmt_url = f"https://api.supabase.com/v1/projects/{self.project_ref}/database/query"
-                
+
                 # Use access_token if available, otherwise fall back to secret_key
                 auth_token = self.access_token if self.access_token else self.secret_key
                 mgmt_headers = {
                     "Authorization": f"Bearer {auth_token}",
-                    "Content-Type": "application/json"
+                    "Content-Type": "application/json",
                 }
-                
+
                 payload = {"query": statement}
-                
+
                 console.print(f"  Executing: {statement[:60]}...", style="dim")
-                response = requests.post(mgmt_url, headers=mgmt_headers, json=payload, timeout=30)
-                
+                response = requests.post(
+                    mgmt_url, headers=mgmt_headers, json=payload, timeout=30
+                )
+
                 if response.status_code in [200, 201]:
-                    console.print(f"  ✓ Statement executed", style="green")
+                    console.print("  ✓ Statement executed", style="green")
                 else:
                     # If Management API fails, try direct execution
-                    console.print(f"  ⚠️  Management API returned {response.status_code}, trying alternate method", style="yellow")
-                    
+                    console.print(
+                        f"  ⚠️  Management API returned {response.status_code}, trying alternate method",
+                        style="yellow",
+                    )
+
                     # Try using the client's query method
                     try:
                         # Execute via the client directly
                         # This uses PostgREST which may not support all DDL
-                        result = self.client.postgrest.rpc("exec", {"query": statement}).execute()
-                        console.print(f"  ✓ Statement executed via RPC", style="green")
+                        self.client.postgrest.rpc(
+                            "exec", {"query": statement}
+                        ).execute()
+                        console.print("  ✓ Statement executed via RPC", style="green")
                     except Exception as rpc_error:
-                        console.print(f"  ❌ Failed: {response.text if response.status_code != 200 else str(rpc_error)}", style="red")
+                        console.print(
+                            f"  ❌ Failed: {response.text if response.status_code != 200 else str(rpc_error)}",
+                            style="red",
+                        )
                         return False
-            
+
             return True
-            
+
         except requests.exceptions.RequestException as e:
             console.print(f"❌ Network error: {e}", style="red")
             return False

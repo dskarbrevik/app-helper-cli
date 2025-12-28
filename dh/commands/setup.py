@@ -140,17 +140,20 @@ def setup():
             default_api_url = ctx.config.deployment.api_url or "http://localhost:8000"
             # Debug: print what we got
             if ctx.config.deployment.api_url:
-                console.print(f"[dim]Loaded existing API URL: {ctx.config.deployment.api_url}[/dim]")
+                console.print(
+                    f"[dim]Loaded existing API URL: {ctx.config.deployment.api_url}[/dim]"
+                )
             api_url = prompt_text(
                 "Backend API URL (for frontend, e.g., Railway URL) - for Vercel",
                 default=default_api_url,
             )
-        
+
         # Ask for Vercel URL if frontend exists
         vercel_url = None
         if ctx.has_frontend:
             console.print(
-                "\nℹ️  Deploy to Vercel first, then come back and update this:", style="blue"
+                "\nℹ️  Deploy to Vercel first, then come back and update this:",
+                style="blue",
             )
             vercel_url = prompt_text(
                 "Vercel deployment URL (optional, for validation) - https://your-app.vercel.app",

@@ -144,7 +144,10 @@ def load_config(
 
 
 def save_frontend_env(
-    frontend_path: Path, config: Config, api_url: Optional[str] = None, vercel_url: Optional[str] = None
+    frontend_path: Path,
+    config: Config,
+    api_url: Optional[str] = None,
+    vercel_url: Optional[str] = None,
 ) -> None:
     """Save database and deployment configuration to frontend .env file."""
     env_path = frontend_path / ".env"
