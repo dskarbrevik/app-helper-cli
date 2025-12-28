@@ -18,6 +18,13 @@ class DatabaseConfig(BaseModel):
     access_token: Optional[str] = None  # For Supabase CLI
 
 
+class DeploymentConfig(BaseModel):
+    """Deployment configuration."""
+
+    api_url: Optional[str] = None  # Backend API URL (NEXT_PUBLIC_API_URL)
+    vercel_url: Optional[str] = None  # Frontend deployment URL (VERCEL_URL)
+
+
 class ProjectConfig(BaseModel):
     """Project paths configuration."""
 
@@ -37,6 +44,7 @@ class Config(BaseModel):
 
     project: ProjectConfig = ProjectConfig()
     db: DatabaseConfig = DatabaseConfig()
+    deployment: DeploymentConfig = DeploymentConfig()
     preferences: PreferencesConfig = PreferencesConfig()
 
 
@@ -82,6 +90,7 @@ def load_config(
     config_data: dict[str, dict] = {
         "project": {},
         "db": {},
+        "deployment": {},
         "preferences": {},
     }
 
@@ -113,6 +122,12 @@ def load_config(
             if "SUPABASE_ACCESS_TOKEN" in fe_env:
                 config_data["db"]["access_token"] = fe_env["SUPABASE_ACCESS_TOKEN"]
 
+            if "NEXT_PUBLIC_API_URL" in fe_env:
+                config_data["deployment"]["api_url"] = fe_env["NEXT_PUBLIC_API_URL"]
+
+            if "VERCEL_URL" in fe_env:
+                config_data["deployment"]["vercel_url"] = fe_env["VERCEL_URL"]
+
     # Load from backend .env if needed (for future use)
     if backend_path:
         be_env_path = backend_path / ".env"
@@ -129,9 +144,9 @@ def load_config(
 
 
 def save_frontend_env(
-    frontend_path: Path, config: Config, api_url: Optional[str] = None
+    frontend_path: Path, config: Config, api_url: Optional[str] = None, vercel_url: Optional[str] = None
 ) -> None:
-    """Save database configuration to frontend .env file."""
+    """Save database and deployment configuration to frontend .env file."""
     env_path = frontend_path / ".env"
 
     # Read existing .env if it exists
@@ -173,7 +188,10 @@ def save_frontend_env(
 
         f.write("\n# === After Deploying to Vercel ===\n")
         f.write("# Add your Vercel deployment URL below (for validation):\n")
-        f.write("# VERCEL_URL=https://your-app.vercel.app\n")
+        if vercel_url:
+            f.write(f"VERCEL_URL={vercel_url}\n")
+        else:
+            f.write("# VERCEL_URL=https://your-app.vercel.app\n")
 
         f.write("\n# === For DevHand CLI Only ===\n")
         f.write(

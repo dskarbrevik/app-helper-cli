@@ -138,15 +138,15 @@ def validate():
                     ctx.config.db.secret_key,
                     ctx.config.db.password,
                     ctx.config.db.project_ref,
+                    ctx.config.db.access_token,  # Pass access token for Management API
                 )
                 if db_client.test_connection():
                     display_success("Database connection successful")
 
                     # Check if allowed_users table exists
-                    try:
-                        db_client.table("allowed_users").select("*").limit(1).execute()
+                    if db_client.table_exists("allowed_users"):
                         display_success("allowed_users table exists")
-                    except Exception:
+                    else:
                         display_warning(
                             "allowed_users table not found - run 'dh db setup'"
                         )

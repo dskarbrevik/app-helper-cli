@@ -28,6 +28,7 @@ def get_db_client():
         ctx.config.db.secret_key,
         ctx.config.db.password,
         ctx.config.db.project_ref,
+        ctx.config.db.access_token,  # Pass access token for Management API
     )
 
 
