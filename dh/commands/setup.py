@@ -136,9 +136,28 @@ def setup():
 
         # Ask for API URL if backend exists
         if ctx.has_backend:
+            # Auto-populate from existing NEXT_PUBLIC_API_URL if available
+            default_api_url = ctx.config.deployment.api_url or "http://localhost:8000"
+            # Debug: print what we got
+            if ctx.config.deployment.api_url:
+                console.print(
+                    f"[dim]Loaded existing API URL: {ctx.config.deployment.api_url}[/dim]"
+                )
             api_url = prompt_text(
                 "Backend API URL (for frontend, e.g., Railway URL) - for Vercel",
-                default="http://localhost:8000",
+                default=default_api_url,
+            )
+
+        # Ask for Vercel URL if frontend exists
+        vercel_url = None
+        if ctx.has_frontend:
+            console.print(
+                "\nℹ️  Deploy to Vercel first, then come back and update this:",
+                style="blue",
+            )
+            vercel_url = prompt_text(
+                "Vercel deployment URL (optional, for validation) - https://your-app.vercel.app",
+                default=ctx.config.deployment.vercel_url or "",
             )
 
         # Update config
@@ -148,10 +167,14 @@ def setup():
         ctx.config.db.password = db_password
         ctx.config.db.access_token = access_token
         ctx.config.db.project_ref = project_ref
+        if api_url:
+            ctx.config.deployment.api_url = api_url
+        if vercel_url:
+            ctx.config.deployment.vercel_url = vercel_url
 
         # Save to frontend .env
         if ctx.has_frontend:
-            save_frontend_env(ctx.frontend_path, ctx.config, api_url)
+            save_frontend_env(ctx.frontend_path, ctx.config, api_url, vercel_url)
             display_success(f"Configuration saved to {ctx.frontend_path}/.env")
 
         # Save to backend .env

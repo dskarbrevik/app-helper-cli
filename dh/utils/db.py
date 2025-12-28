@@ -1,6 +1,7 @@
 """Database utilities for Supabase operations."""
 
 import re
+import requests
 from pathlib import Path
 from typing import Optional
 
@@ -19,6 +20,7 @@ class DatabaseClient:
         secret_key: str,  # sb_secret_* (new) or service_role JWT (legacy)
         db_password: Optional[str] = None,
         project_ref: Optional[str] = None,
+        access_token: Optional[str] = None,  # sbp_* for Management API
     ):
         """Initialize database client.
 
@@ -27,10 +29,12 @@ class DatabaseClient:
             secret_key: Secret API key (sb_secret_* or legacy service_role JWT)
             db_password: Database password (not used with SDK approach)
             project_ref: Project reference ID (extracted from URL if not provided)
+            access_token: Supabase access token for Management API (sbp_*)
         """
         self.url = url
         self.secret_key = secret_key
         self.db_password = db_password
+        self.access_token = access_token
 
         # Extract project ref from URL if not provided
         if not project_ref:
@@ -82,16 +86,60 @@ class DatabaseClient:
     def insert_allowed_user(self, user_id: str) -> bool:
         """Insert a user into the allowed_users table.
 
-        Returns True if successful, False otherwise.
+        Returns True if inserted, False if already exists or error.
         """
         try:
             self.client.table("allowed_users").insert({"user_id": user_id}).execute()
             return True
         except Exception as e:
             # Check if it's a duplicate key error
-            if "duplicate key" in str(e).lower() or "already exists" in str(e).lower():
-                return True  # Already exists, consider it success
+            error_str = str(e).lower()
+            if (
+                "duplicate" in error_str
+                or "already exists" in error_str
+                or "unique" in error_str
+            ):
+                return False  # Already exists
             console.print(f"Error inserting user: {e}", style="yellow")
+            return False
+
+    def check_user_allowed(self, user_id: str) -> bool:
+        """Check if a user is in the allowed_users table.
+
+        Returns True if user is allowed, False otherwise.
+        """
+        try:
+            result = (
+                self.client.table("allowed_users")
+                .select("*")
+                .eq("user_id", user_id)
+                .execute()
+            )
+            return len(result.data) > 0
+        except Exception as e:
+            console.print(f"Error checking user: {e}", style="yellow")
+            return False
+
+    def table_exists(self, table_name: str) -> bool:
+        """Check if a table exists by trying to query it.
+
+        Returns True if table exists, False otherwise.
+        """
+        try:
+            result = self.client.table(table_name).select("*").limit(1).execute()
+            # If we can query it and get a result object with data attribute, table exists
+            return hasattr(result, "data")
+        except Exception as e:
+            # Check if it's a "relation does not exist" type error
+            error_msg = str(e).lower()
+            if (
+                "does not exist" in error_msg
+                or "not found" in error_msg
+                or "relation" in error_msg
+            ):
+                return False
+            # For other errors, we can't determine - assume it doesn't exist
+            console.print(f"Could not verify table {table_name}: {e}", style="dim")
             return False
 
     def sync_allowed_users(self, emails: list[str]) -> dict[str, int]:
@@ -116,13 +164,22 @@ class DatabaseClient:
                 stats["not_found"] += 1
                 continue
 
+            # Check if user is already in allowed_users
+            if self.check_user_allowed(user["id"]):
+                console.print(
+                    f"⏭️  {email} already in allowed_users",
+                    style="dim",
+                )
+                stats["skipped"] += 1
+                continue
+
             # Insert into allowed_users
             if self.insert_allowed_user(user["id"]):
                 console.print(f"✅ Added {email} to allowed_users", style="green")
                 stats["added"] += 1
             else:
                 console.print(
-                    f"⚠️  {email} already in allowed_users or error occurred",
+                    f"⚠️  Failed to add {email} (may already exist or error occurred)",
                     style="yellow",
                 )
                 stats["skipped"] += 1
@@ -132,7 +189,7 @@ class DatabaseClient:
     def run_migration_file(self, migration_path: Path) -> bool:
         """Run a SQL migration file using Supabase Python SDK.
 
-        Attempts to execute SQL through available methods, falls back to manual instructions.
+        Executes SQL directly through Supabase's API.
         """
         if not migration_path.exists():
             console.print(f"❌ Migration file not found: {migration_path}", style="red")
@@ -144,83 +201,96 @@ class DatabaseClient:
 
         console.print(f"\n📝 Processing migration: {migration_path.name}", style="blue")
 
-        # Try to execute via Supabase SDK's table operations
-        # Since the SDK doesn't support raw SQL execution, we parse and execute what we can
+        # Execute SQL using Supabase REST API
         try:
-            # Split into statements
-            statements = [s.strip() for s in sql_content.split(";") if s.strip()]
-
-            # Check if this is a simple allowed_users table creation
-            if any("allowed_users" in stmt.lower() for stmt in statements):
-                # Try to create the table structure using SDK methods
-                created = self._create_allowed_users_table_via_sdk(statements)
-                if created:
-                    console.print(
-                        f"✅ Migration executed: {migration_path.name}", style="green"
-                    )
-                    return True
-
-            # For other migrations or if SDK approach fails, provide manual instructions
-            console.print(
-                "\n⚠️  This migration requires manual execution in Supabase",
-                style="yellow",
-            )
-            console.print(
-                "\nℹ️  Copy the SQL below and run it in Supabase Dashboard > SQL Editor:",
-                style="blue",
-            )
-
-            console.print("\n" + "─" * 60, style="dim")
-            console.print(sql_content, style="cyan")
-            console.print("─" * 60 + "\n", style="dim")
-
-            console.print("Steps:", style="bold")
-            console.print("  1. Go to: https://supabase.com/dashboard", style="blue")
-            console.print("  2. Select your project", style="blue")
-            console.print("  3. Click: SQL Editor (in left sidebar)", style="blue")
-            console.print("  4. Click: 'New Query'", style="blue")
-            console.print("  5. Paste the SQL above", style="blue")
-            console.print("  6. Click 'Run' or press Cmd+Enter\n", style="blue")
-
-            from dh.utils.prompts import prompt_confirm
-
-            if prompt_confirm("Have you successfully run this migration in Supabase?"):
+            success = self._execute_sql(sql_content)
+            if success:
                 console.print(
-                    f"✅ Migration confirmed: {migration_path.name}", style="green"
+                    f"✅ Migration executed: {migration_path.name}", style="green"
                 )
                 return True
             else:
                 console.print(
-                    f"⏭️  Skipping migration: {migration_path.name}", style="yellow"
+                    f"❌ Migration failed: {migration_path.name}", style="red"
                 )
                 return False
-
         except Exception as e:
-            console.print(f"❌ Error processing migration: {e}", style="red")
+            console.print(f"❌ Error executing migration: {e}", style="red")
             return False
 
-    def _create_allowed_users_table_via_sdk(self, statements: list) -> bool:
-        """Attempt to create allowed_users table using SDK operations.
+    def _execute_sql(self, sql: str) -> bool:
+        """Execute raw SQL using Supabase's PostgreSQL connection via RPC.
 
-        Returns True if successful, False otherwise.
+        Uses the postgrest query endpoint to execute SQL.
         """
-        try:
-            # Check if table exists by trying to query it
-            try:
-                self.client.table("allowed_users").select("*").limit(1).execute()
-                # If we get here, table exists
-                console.print("  ℹ️  allowed_users table already exists", style="dim")
-                return True
-            except Exception:
-                # Table doesn't exist, which is expected for new setup
-                pass
-
-            # Unfortunately, the Supabase Python SDK doesn't provide
-            # CREATE TABLE functionality - that's a DDL operation
-            # We need to run it via SQL Editor
+        if not self.project_ref:
+            console.print("❌ Project reference not found", style="red")
             return False
 
-        except Exception:
+        try:
+            # Use Supabase's query endpoint for SQL execution
+            # This requires the service_role key or secret key with appropriate permissions
+
+            # Try direct SQL execution via PostgREST
+            # Note: This may not work for DDL statements in some Supabase configurations
+            # In that case, we'll use the Management API
+
+            # Split SQL into individual statements
+            statements = [s.strip() for s in sql.split(";") if s.strip()]
+
+            for statement in statements:
+                if not statement:
+                    continue
+
+                # Use the Management API for DDL operations
+                # Format: POST https://api.supabase.com/v1/projects/{ref}/database/query
+                mgmt_url = f"https://api.supabase.com/v1/projects/{self.project_ref}/database/query"
+
+                # Use access_token if available, otherwise fall back to secret_key
+                auth_token = self.access_token if self.access_token else self.secret_key
+                mgmt_headers = {
+                    "Authorization": f"Bearer {auth_token}",
+                    "Content-Type": "application/json",
+                }
+
+                payload = {"query": statement}
+
+                console.print(f"  Executing: {statement[:60]}...", style="dim")
+                response = requests.post(
+                    mgmt_url, headers=mgmt_headers, json=payload, timeout=30
+                )
+
+                if response.status_code in [200, 201]:
+                    console.print("  ✓ Statement executed", style="green")
+                else:
+                    # If Management API fails, try direct execution
+                    console.print(
+                        f"  ⚠️  Management API returned {response.status_code}, trying alternate method",
+                        style="yellow",
+                    )
+
+                    # Try using the client's query method
+                    try:
+                        # Execute via the client directly
+                        # This uses PostgREST which may not support all DDL
+                        self.client.postgrest.rpc(
+                            "exec", {"query": statement}
+                        ).execute()
+                        console.print("  ✓ Statement executed via RPC", style="green")
+                    except Exception as rpc_error:
+                        console.print(
+                            f"  ❌ Failed: {response.text if response.status_code != 200 else str(rpc_error)}",
+                            style="red",
+                        )
+                        return False
+
+            return True
+
+        except requests.exceptions.RequestException as e:
+            console.print(f"❌ Network error: {e}", style="red")
+            return False
+        except Exception as e:
+            console.print(f"❌ Execution error: {e}", style="red")
             return False
 
     def run_migrations(self, migrations_dir: Path) -> bool:
@@ -257,6 +327,7 @@ def create_db_client(
     secret_key: str,  # sb_secret_* (new) or service_role JWT (legacy)
     db_password: Optional[str] = None,
     project_ref: Optional[str] = None,
+    access_token: Optional[str] = None,  # sbp_* for Management API
 ) -> DatabaseClient:
     """Create a database client instance.
 
@@ -265,8 +336,9 @@ def create_db_client(
         secret_key: Secret API key (sb_secret_* or legacy service_role JWT)
         db_password: Database password for direct PostgreSQL access
         project_ref: Project reference ID
+        access_token: Supabase access token for Management API (sbp_*)
 
     Returns:
         DatabaseClient instance
     """
-    return DatabaseClient(url, secret_key, db_password, project_ref)
+    return DatabaseClient(url, secret_key, db_password, project_ref, access_token)
