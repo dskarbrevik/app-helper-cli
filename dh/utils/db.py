@@ -19,6 +19,16 @@ CREATE TABLE IF NOT EXISTS public.schema_migrations (
     applied_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Enable Row Level Security
+ALTER TABLE public.schema_migrations ENABLE ROW LEVEL SECURITY;
+
+-- Policy: Service role can manage all rows (migrations are admin operations)
+-- Note: Service role bypasses RLS by default, but explicit policy for clarity
+CREATE POLICY "Service role can manage schema_migrations"
+    ON public.schema_migrations
+    FOR ALL
+    USING (auth.jwt() ->> 'role' = 'service_role');
+
 -- Grant permissions (service role only - migrations are admin operations)
 GRANT ALL ON public.schema_migrations TO service_role;
 """

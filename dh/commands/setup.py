@@ -83,105 +83,148 @@ def setup():
         display_error("Please install missing tools and run setup again")
         raise typer.Exit(1)
 
-    # Step 3: Configure database credentials
-    display_step(3, "Configuring database credentials...")
+    # Step 3: Check/configure environment variables
+    display_step(3, "Checking environment variables...")
 
-    configure_db = prompt_confirm(
-        "Configure database (Supabase) credentials?", default=True
+    # Check if all required env vars are already configured
+    has_db_url = bool(ctx.config.db.url)
+    has_public_key = bool(ctx.config.db.public_key)
+    has_secret_key = bool(ctx.config.db.secret_key)
+    has_db_password = bool(ctx.config.db.password)
+    has_access_token = bool(ctx.config.db.access_token)
+
+    all_db_vars_set = all(
+        [has_db_url, has_public_key, has_secret_key, has_db_password, has_access_token]
     )
 
-    api_url = None
-    if configure_db:
-        db_url = prompt_text(
-            "Database URL (e.g., https://xxx.supabase.co)",
-            default=ctx.config.db.url,
-        )
+    api_url = ctx.config.deployment.api_url
+    vercel_url = ctx.config.deployment.vercel_url
 
-        # Extract project ref
-        match = re.search(r"https://([^.]+)\.supabase\.co", db_url)
-        project_ref = match.group(1) if match else None
-
-        console.print(
-            "\nℹ️  Find keys in: Supabase Dashboard > Settings > API", style="blue"
-        )
-        console.print("   Copy these to Vercel for deployment\n")
-
-        public_key = prompt_text(
-            "Public/Anon key (sb_publishable_* or anon JWT) - for Vercel",
-            default=ctx.config.db.public_key,
-            password=False,
-        )
-
-        console.print(
-            "\nℹ️  The following are for devhand CLI operations only:", style="blue"
-        )
-        console.print("   (NOT needed in Vercel deployment)\n")
-
-        secret_key = prompt_text(
-            "Secret/Service role key (sb_secret_* or service_role JWT) - for CLI",
-            default=ctx.config.db.secret_key,
-            password=True,
-        )
-
-        db_password = prompt_text(
-            "Database password - for migrations",
-            default=ctx.config.db.password,
-            password=True,
-        )
-
-        access_token = prompt_text(
-            "Supabase access token - for CLI (from https://supabase.com/dashboard/account/tokens)",
-            default=ctx.config.db.access_token,
-            password=True,
-        )
-
-        # Ask for API URL if backend exists
-        if ctx.has_backend:
-            # Auto-populate from existing NEXT_PUBLIC_API_URL if available
-            default_api_url = ctx.config.deployment.api_url or "http://localhost:8000"
-            # Debug: print what we got
-            if ctx.config.deployment.api_url:
-                console.print(
-                    f"[dim]Loaded existing API URL: {ctx.config.deployment.api_url}[/dim]"
-                )
-            api_url = prompt_text(
-                "Backend API URL (for frontend, e.g., Railway URL) - for Vercel",
-                default=default_api_url,
-            )
-
-        # Ask for Vercel URL if frontend exists
-        vercel_url = None
-        if ctx.has_frontend:
-            console.print(
-                "\nℹ️  Deploy to Vercel first, then come back and update this:",
-                style="blue",
-            )
-            vercel_url = prompt_text(
-                "Vercel deployment URL (optional, for validation) - https://your-app.vercel.app",
-                default=ctx.config.deployment.vercel_url or "",
-            )
-
-        # Update config
-        ctx.config.db.url = db_url
-        ctx.config.db.public_key = public_key
-        ctx.config.db.secret_key = secret_key
-        ctx.config.db.password = db_password
-        ctx.config.db.access_token = access_token
-        ctx.config.db.project_ref = project_ref
+    if all_db_vars_set:
+        # All credentials already configured - just display status
+        display_success(f"Database URL: {ctx.config.db.url}")
+        display_success("Public key: configured")
+        display_success("Secret key: configured")
+        display_success("Database password: configured")
+        display_success("Access token: configured")
         if api_url:
-            ctx.config.deployment.api_url = api_url
+            display_success(f"Backend API URL: {api_url}")
         if vercel_url:
-            ctx.config.deployment.vercel_url = vercel_url
+            display_success(f"Vercel URL: {vercel_url}")
+    else:
+        # Show what's configured vs missing
+        if has_db_url:
+            display_success(f"Database URL: {ctx.config.db.url}")
+        else:
+            display_warning("Database URL: not configured")
+        if has_public_key:
+            display_success("Public key: configured")
+        else:
+            display_warning("Public key: not configured")
+        if has_secret_key:
+            display_success("Secret key: configured")
+        else:
+            display_warning("Secret key: not configured")
+        if has_db_password:
+            display_success("Database password: configured")
+        else:
+            display_warning("Database password: not configured")
+        if has_access_token:
+            display_success("Access token: configured")
+        else:
+            display_warning("Access token: not configured")
 
-        # Save to frontend .env
-        if ctx.has_frontend:
-            save_frontend_env(ctx.frontend_path, ctx.config, api_url, vercel_url)
-            display_success(f"Configuration saved to {ctx.frontend_path}/.env")
+        # Prompt to configure missing values
+        if prompt_confirm("Configure missing database credentials?", default=True):
+            db_url = prompt_text(
+                "Database URL (e.g., https://xxx.supabase.co)",
+                default=ctx.config.db.url,
+            )
 
-        # Save to backend .env
-        if ctx.has_backend:
-            save_backend_env(ctx.backend_path, ctx.config)
-            display_success(f"Configuration saved to {ctx.backend_path}/.env")
+            # Extract project ref
+            match = re.search(r"https://([^.]+)\.supabase\.co", db_url)
+            project_ref = match.group(1) if match else None
+
+            console.print(
+                "\nℹ️  Find keys in: Supabase Dashboard > Settings > API", style="blue"
+            )
+            console.print("   Copy these to Vercel for deployment\n")
+
+            public_key = prompt_text(
+                "Public/Anon key (sb_publishable_* or anon JWT) - for Vercel",
+                default=ctx.config.db.public_key,
+                password=False,
+            )
+
+            console.print(
+                "\nℹ️  The following are for devhand CLI operations only:", style="blue"
+            )
+            console.print("   (NOT needed in Vercel deployment)\n")
+
+            secret_key = prompt_text(
+                "Secret/Service role key (sb_secret_* or service_role JWT) - for CLI",
+                default=ctx.config.db.secret_key,
+                password=True,
+            )
+
+            db_password = prompt_text(
+                "Database password - for migrations",
+                default=ctx.config.db.password,
+                password=True,
+            )
+
+            access_token = prompt_text(
+                "Supabase access token - for CLI (from https://supabase.com/dashboard/account/tokens)",
+                default=ctx.config.db.access_token,
+                password=True,
+            )
+
+            # Ask for API URL if backend exists
+            if ctx.has_backend:
+                default_api_url = (
+                    ctx.config.deployment.api_url or "http://localhost:8000"
+                )
+                if ctx.config.deployment.api_url:
+                    console.print(
+                        f"[dim]Loaded existing API URL: {ctx.config.deployment.api_url}[/dim]"
+                    )
+                api_url = prompt_text(
+                    "Backend API URL (for frontend, e.g., Railway URL) - for Vercel",
+                    default=default_api_url,
+                )
+
+            # Ask for Vercel URL if frontend exists
+            if ctx.has_frontend:
+                console.print(
+                    "\nℹ️  Deploy to Vercel first, then come back and update this:",
+                    style="blue",
+                )
+                vercel_url = prompt_text(
+                    "Vercel deployment URL (optional, for validation) - https://your-app.vercel.app",
+                    default=ctx.config.deployment.vercel_url or "",
+                )
+
+            # Update config
+            ctx.config.db.url = db_url
+            ctx.config.db.public_key = public_key
+            ctx.config.db.secret_key = secret_key
+            ctx.config.db.password = db_password
+            ctx.config.db.access_token = access_token
+            ctx.config.db.project_ref = project_ref
+            if api_url:
+                ctx.config.deployment.api_url = api_url
+            if vercel_url:
+                ctx.config.deployment.vercel_url = vercel_url
+
+            # Save to frontend .env
+            if ctx.has_frontend:
+                save_frontend_env(ctx.frontend_path, ctx.config, api_url, vercel_url)
+                display_success(f"Configuration saved to {ctx.frontend_path}/.env")
+
+            # Save to backend .env
+            if ctx.has_backend:
+                save_backend_env(ctx.backend_path, ctx.config)
+                display_success(f"Configuration saved to {ctx.backend_path}/.env")
 
     # Step 4: Install dependencies
     display_step(4, "Installing dependencies...")
@@ -235,8 +278,8 @@ def setup():
         else:
             display_warning("Backend .gitignore not found")
 
-    # Step 6: Set up database tables (if configured)
-    if configure_db and ctx.config.db.secret_key:
+    # Step 6: Set up database tables (if credentials are configured)
+    if ctx.config.db.url and ctx.config.db.secret_key:
         display_step(6, "Setting up database tables...")
 
         try:
