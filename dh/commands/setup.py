@@ -259,7 +259,9 @@ def setup():
             if db_client.ensure_database_tables(migrations_dir):
                 display_success("Database tables ready")
             else:
-                display_warning("Could not create database tables - run 'dh db migrate' manually")
+                display_warning(
+                    "Could not create database tables - run 'dh db migrate' manually"
+                )
         except Exception as e:
             display_warning(f"Could not set up database tables: {e}")
             display_info("Run 'dh db migrate' manually after setup")

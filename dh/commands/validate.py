@@ -155,9 +155,7 @@ def validate():
                         display_warning(
                             "schema_migrations table not found - run 'dh setup' or 'dh db migrate'"
                         )
-                        deployment_issues.append(
-                            "schema_migrations table missing"
-                        )
+                        deployment_issues.append("schema_migrations table missing")
 
                     # Check if allowed_users table exists
                     if db_client.table_exists("allowed_users"):
@@ -166,9 +164,7 @@ def validate():
                         display_warning(
                             "allowed_users table not found - run 'dh setup' or 'dh db sync-users'"
                         )
-                        deployment_issues.append(
-                            "allowed_users table missing"
-                        )
+                        deployment_issues.append("allowed_users table missing")
 
                     # Check authentication configuration
                     console.print()
