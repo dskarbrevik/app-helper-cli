@@ -146,8 +146,7 @@ class DatabaseClient:
         """Ensure the allowed_users table exists with proper RLS policies.
 
         Creates the table if it doesn't exist, with:
-        - id: serial primary key
-        - user_id: uuid referencing auth.users(id)
+        - user_id: uuid primary key referencing auth.users(id)
         - created_at: timestamp with default
         - RLS policies for authenticated users to read their own row
 
@@ -161,13 +160,12 @@ class DatabaseClient:
         console.print("📝 Creating allowed_users table...", style="blue")
 
         # SQL to create the allowed_users table with RLS
+        # Using user_id as primary key since it's the natural key (no need for surrogate id)
         create_table_sql = """
 -- Create the allowed_users table
 CREATE TABLE IF NOT EXISTS public.allowed_users (
-    id SERIAL PRIMARY KEY,
-    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    UNIQUE(user_id)
+    user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 -- Enable Row Level Security
@@ -190,7 +188,6 @@ CREATE POLICY "Service role can manage allowed_users"
 -- Grant necessary permissions
 GRANT SELECT ON public.allowed_users TO authenticated;
 GRANT ALL ON public.allowed_users TO service_role;
-GRANT USAGE, SELECT ON SEQUENCE public.allowed_users_id_seq TO service_role;
 """
 
         # Execute the migration
