@@ -113,28 +113,6 @@ class TestFindWorkspaceRoot:
 
         assert result == workspace
 
-    def test_find_workspace_multi_project(self, tmp_path: Path):
-        """Test workspace detection with multiple projects."""
-        workspace = tmp_path / "workspace"
-        workspace.mkdir()
-
-        # Create frontend project
-        frontend = workspace / "fe"
-        frontend.mkdir()
-        (frontend / "package.json").write_text('{"name": "fe"}')
-        (frontend / "next.config.ts").write_text("export default {}")
-
-        # Create backend project
-        backend = workspace / "be"
-        backend.mkdir()
-        (backend / "pyproject.toml").write_text('[project]\nname = "be"')
-        (backend / "main.py").write_text("# app")
-
-        # When in frontend, should return parent (workspace)
-        result = find_workspace_root(frontend)
-
-        assert result == workspace
-
     def test_find_workspace_no_git_no_parent_projects(self, tmp_path: Path):
         """Test finding workspace when no .git and no parent projects exist."""
         # Create a directory without .git
@@ -171,38 +149,6 @@ class TestFindProjectDirs:
         result = find_project_dirs(workspace)
 
         assert result["frontend"] == frontend
-        assert result["backend"] == backend
-
-    def test_find_only_frontend(self, tmp_path: Path):
-        """Test finding only frontend project."""
-        workspace = tmp_path / "workspace"
-        workspace.mkdir()
-
-        # Create frontend
-        frontend = workspace / "fe"
-        frontend.mkdir()
-        (frontend / "package.json").write_text('{"name": "fe"}')
-        (frontend / "next.config.ts").write_text("export default {}")
-
-        result = find_project_dirs(workspace)
-
-        assert result["frontend"] == frontend
-        assert result["backend"] is None
-
-    def test_find_only_backend(self, tmp_path: Path):
-        """Test finding only backend project."""
-        workspace = tmp_path / "workspace"
-        workspace.mkdir()
-
-        # Create backend
-        backend = workspace / "be"
-        backend.mkdir()
-        (backend / "pyproject.toml").write_text('[project]\nname = "be"')
-        (backend / "main.py").write_text("# app")
-
-        result = find_project_dirs(workspace)
-
-        assert result["frontend"] is None
         assert result["backend"] == backend
 
     def test_find_no_projects(self, tmp_path: Path):

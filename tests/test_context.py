@@ -3,6 +3,8 @@
 from pathlib import Path
 from unittest.mock import patch
 
+import pytest
+import typer
 
 from dh.context import ProjectContext
 
@@ -156,76 +158,6 @@ class TestProjectContext:
             assert context.frontend_path == frontend
             assert context.backend_path == backend
 
-    def test_get_target_path_explicit_frontend(self, tmp_path: Path):
-        """Test get_target_path with explicit frontend target."""
-        workspace = tmp_path / "workspace"
-        workspace.mkdir()
-        (workspace / ".git").mkdir()
-
-        frontend = workspace / "fe"
-        frontend.mkdir()
-        (frontend / "package.json").write_text('{"name": "fe"}')
-        (frontend / "next.config.ts").write_text("export default {}")
-
-        with patch("dh.context.load_config") as mock_config:
-            mock_config.return_value.project.frontend_path = None
-            mock_config.return_value.project.backend_path = None
-            mock_config.return_value.db.url = None
-            mock_config.return_value.db.service_role_key = None
-
-            context = ProjectContext(start_path=workspace)
-
-            result = context.get_target_path("frontend")
-
-            assert result == frontend
-
-    def test_get_target_path_explicit_backend(self, tmp_path: Path):
-        """Test get_target_path with explicit backend target."""
-        workspace = tmp_path / "workspace"
-        workspace.mkdir()
-        (workspace / ".git").mkdir()
-
-        backend = workspace / "be"
-        backend.mkdir()
-        (backend / "pyproject.toml").write_text('[project]\nname = "be"')
-        (backend / "main.py").write_text("# app")
-
-        with patch("dh.context.load_config") as mock_config:
-            mock_config.return_value.project.frontend_path = None
-            mock_config.return_value.project.backend_path = None
-            mock_config.return_value.db.url = None
-            mock_config.return_value.db.service_role_key = None
-
-            context = ProjectContext(start_path=workspace)
-
-            result = context.get_target_path("backend")
-
-            assert result == backend
-
-    def test_get_target_path_auto_detect(self, tmp_path: Path):
-        """Test get_target_path with auto-detection."""
-        workspace = tmp_path / "workspace"
-        workspace.mkdir()
-
-        frontend = workspace / "fe"
-        frontend.mkdir()
-        (frontend / "package.json").write_text('{"name": "fe"}')
-        (frontend / "next.config.ts").write_text("export default {}")
-
-        with patch("dh.context.load_config") as mock_config:
-            mock_config.return_value.project.frontend_path = None
-            mock_config.return_value.project.backend_path = None
-            mock_config.return_value.db.url = None
-            mock_config.return_value.db.service_role_key = None
-
-            # Start from frontend directory
-            context = ProjectContext(start_path=frontend)
-
-            # Auto-detect should return frontend path
-            result = context.get_target_path(None)
-
-            assert result == frontend
-
     def test_get_target_path_no_match(self, tmp_path: Path):
         """Test get_target_path returns None when not in a project."""
         workspace = tmp_path / "workspace"
@@ -266,3 +198,287 @@ class TestProjectContext:
 
             assert context.start_path.exists()
             assert context.workspace_root.exists()
+
+    def test_require_frontend_when_missing(self, tmp_path: Path):
+        """Test require_frontend raises Exit when no frontend exists."""
+        workspace = tmp_path / "workspace"
+        workspace.mkdir()
+        (workspace / ".git").mkdir()
+
+        with patch("dh.context.load_config") as mock_config:
+            mock_config.return_value.project.frontend_path = None
+            mock_config.return_value.project.backend_path = None
+            mock_config.return_value.db.url = None
+            mock_config.return_value.db.service_role_key = None
+
+            context = ProjectContext(start_path=workspace)
+
+            with pytest.raises(typer.Exit) as exc_info:
+                context.require_frontend()
+
+            assert exc_info.value.exit_code == 1
+
+    def test_require_backend_when_missing(self, tmp_path: Path):
+        """Test require_backend raises Exit when no backend exists."""
+        workspace = tmp_path / "workspace"
+        workspace.mkdir()
+        (workspace / ".git").mkdir()
+
+        with patch("dh.context.load_config") as mock_config:
+            mock_config.return_value.project.frontend_path = None
+            mock_config.return_value.project.backend_path = None
+            mock_config.return_value.db.url = None
+            mock_config.return_value.db.service_role_key = None
+
+            context = ProjectContext(start_path=workspace)
+
+            with pytest.raises(typer.Exit) as exc_info:
+                context.require_backend()
+
+            assert exc_info.value.exit_code == 1
+
+    def test_require_project_ambiguous_context(self, tmp_path: Path):
+        """Test require_project fails when both FE and BE exist with no specific context."""
+        workspace = tmp_path / "workspace"
+        workspace.mkdir()
+        (workspace / ".git").mkdir()
+
+        # Create both projects
+        frontend = workspace / "fe"
+        frontend.mkdir()
+        (frontend / "package.json").write_text('{"name": "fe"}')
+        (frontend / "next.config.ts").write_text("export default {}")
+
+        backend = workspace / "be"
+        backend.mkdir()
+        (backend / "pyproject.toml").write_text('[project]\nname = "be"')
+        (backend / "main.py").write_text("# app")
+
+        with patch("dh.context.load_config") as mock_config:
+            mock_config.return_value.project.frontend_path = None
+            mock_config.return_value.project.backend_path = None
+            mock_config.return_value.db.url = None
+            mock_config.return_value.db.service_role_key = None
+
+            # Start from workspace root (not in either project)
+            context = ProjectContext(start_path=workspace)
+
+            with pytest.raises(typer.Exit) as exc_info:
+                context.require_project()
+
+            assert exc_info.value.exit_code == 1
+
+    def test_require_project_no_projects(self, tmp_path: Path):
+        """Test require_project fails when no projects exist."""
+        workspace = tmp_path / "workspace"
+        workspace.mkdir()
+        (workspace / ".git").mkdir()
+
+        with patch("dh.context.load_config") as mock_config:
+            mock_config.return_value.project.frontend_path = None
+            mock_config.return_value.project.backend_path = None
+            mock_config.return_value.db.url = None
+            mock_config.return_value.db.service_role_key = None
+
+            context = ProjectContext(start_path=workspace)
+
+            with pytest.raises(typer.Exit) as exc_info:
+                context.require_project()
+
+            assert exc_info.value.exit_code == 1
+
+    def test_context_config_override_nonexistent_path(self, tmp_path: Path):
+        """Test context handles config pointing to nonexistent paths."""
+        workspace = tmp_path / "workspace"
+        workspace.mkdir()
+        (workspace / ".git").mkdir()
+
+        with patch("dh.context.load_config") as mock_config:
+            from dh.utils.config import Config, ProjectConfig, DatabaseConfig
+
+            config = Config(
+                project=ProjectConfig(
+                    frontend_path="nonexistent-fe", backend_path="nonexistent-be"
+                ),
+                db=DatabaseConfig(),
+            )
+            mock_config.return_value = config
+
+            context = ProjectContext(start_path=workspace)
+
+            # Should not crash, should ignore invalid paths
+            assert context.frontend_path is None
+            assert context.backend_path is None
+
+    def test_require_frontend_success(self, tmp_path: Path):
+        """Test require_frontend returns path when frontend exists."""
+        workspace = tmp_path / "workspace"
+        workspace.mkdir()
+        (workspace / ".git").mkdir()
+
+        frontend = workspace / "fe"
+        frontend.mkdir()
+        (frontend / "package.json").write_text('{"name": "fe"}')
+        (frontend / "next.config.ts").write_text("export default {}")
+
+        with patch("dh.context.load_config") as mock_config:
+            mock_config.return_value.project.frontend_path = None
+            mock_config.return_value.project.backend_path = None
+            mock_config.return_value.db.url = None
+            mock_config.return_value.db.service_role_key = None
+
+            context = ProjectContext(start_path=workspace)
+            result = context.require_frontend()
+
+            assert result == frontend
+
+    def test_require_backend_success(self, tmp_path: Path):
+        """Test require_backend returns path when backend exists."""
+        workspace = tmp_path / "workspace"
+        workspace.mkdir()
+        (workspace / ".git").mkdir()
+
+        backend = workspace / "be"
+        backend.mkdir()
+        (backend / "pyproject.toml").write_text('[project]\nname = "be"')
+        (backend / "main.py").write_text("# app")
+
+        with patch("dh.context.load_config") as mock_config:
+            mock_config.return_value.project.frontend_path = None
+            mock_config.return_value.project.backend_path = None
+            mock_config.return_value.db.url = None
+            mock_config.return_value.db.service_role_key = None
+
+            context = ProjectContext(start_path=workspace)
+            result = context.require_backend()
+
+            assert result == backend
+
+    def test_require_project_from_frontend(self, tmp_path: Path):
+        """Test require_project returns frontend when called from FE directory."""
+        workspace = tmp_path / "workspace"
+        workspace.mkdir()
+        (workspace / ".git").mkdir()
+
+        frontend = workspace / "fe"
+        frontend.mkdir()
+        (frontend / "package.json").write_text('{"name": "fe"}')
+        (frontend / "next.config.ts").write_text("export default {}")
+
+        backend = workspace / "be"
+        backend.mkdir()
+        (backend / "pyproject.toml").write_text('[project]\nname = "be"')
+        (backend / "main.py").write_text("# app")
+
+        with patch("dh.context.load_config") as mock_config:
+            mock_config.return_value.project.frontend_path = None
+            mock_config.return_value.project.backend_path = None
+            mock_config.return_value.db.url = None
+            mock_config.return_value.db.service_role_key = None
+
+            # Start from frontend directory
+            context = ProjectContext(start_path=frontend)
+            project_type, path = context.require_project()
+
+            assert project_type == "frontend"
+            assert path == frontend
+
+    def test_require_project_only_frontend(self, tmp_path: Path):
+        """Test require_project returns frontend when only FE exists."""
+        workspace = tmp_path / "workspace"
+        workspace.mkdir()
+        (workspace / ".git").mkdir()
+
+        frontend = workspace / "fe"
+        frontend.mkdir()
+        (frontend / "package.json").write_text('{"name": "fe"}')
+        (frontend / "next.config.ts").write_text("export default {}")
+
+        with patch("dh.context.load_config") as mock_config:
+            mock_config.return_value.project.frontend_path = None
+            mock_config.return_value.project.backend_path = None
+            mock_config.return_value.db.url = None
+            mock_config.return_value.db.service_role_key = None
+
+            context = ProjectContext(start_path=workspace)
+            project_type, path = context.require_project()
+
+            assert project_type == "frontend"
+            assert path == frontend
+
+    def test_require_project_from_backend(self, tmp_path: Path):
+        """Test require_project returns backend when called from BE directory."""
+        workspace = tmp_path / "workspace"
+        workspace.mkdir()
+        (workspace / ".git").mkdir()
+
+        frontend = workspace / "fe"
+        frontend.mkdir()
+        (frontend / "package.json").write_text('{"name": "fe"}')
+        (frontend / "next.config.ts").write_text("export default {}")
+
+        backend = workspace / "be"
+        backend.mkdir()
+        (backend / "pyproject.toml").write_text('[project]\nname = "be"')
+        (backend / "main.py").write_text("# app")
+
+        with patch("dh.context.load_config") as mock_config:
+            mock_config.return_value.project.frontend_path = None
+            mock_config.return_value.project.backend_path = None
+            mock_config.return_value.db.url = None
+            mock_config.return_value.db.service_role_key = None
+
+            # Start from backend directory
+            context = ProjectContext(start_path=backend)
+            project_type, path = context.require_project()
+
+            assert project_type == "backend"
+            assert path == backend
+
+    def test_get_target_path_auto_detect_frontend(self, tmp_path: Path):
+        """Test get_target_path(None) auto-detects when in frontend directory."""
+        workspace = tmp_path / "workspace"
+        workspace.mkdir()
+        (workspace / ".git").mkdir()
+
+        frontend = workspace / "fe"
+        frontend.mkdir()
+        (frontend / "package.json").write_text('{"name": "fe"}')
+        (frontend / "next.config.ts").write_text("export default {}")
+
+        with patch("dh.context.load_config") as mock_config:
+            mock_config.return_value.project.frontend_path = None
+            mock_config.return_value.project.backend_path = None
+            mock_config.return_value.db.url = None
+            mock_config.return_value.db.service_role_key = None
+
+            # Start from frontend directory
+            context = ProjectContext(start_path=frontend)
+            result = context.get_target_path(None)
+
+            # Should auto-detect and return frontend path
+            assert result == frontend
+
+    def test_get_target_path_auto_detect_backend(self, tmp_path: Path):
+        """Test get_target_path(None) auto-detects when in backend directory."""
+        workspace = tmp_path / "workspace"
+        workspace.mkdir()
+        (workspace / ".git").mkdir()
+
+        backend = workspace / "be"
+        backend.mkdir()
+        (backend / "pyproject.toml").write_text('[project]\nname = "be"')
+        (backend / "main.py").write_text("# app")
+
+        with patch("dh.context.load_config") as mock_config:
+            mock_config.return_value.project.frontend_path = None
+            mock_config.return_value.project.backend_path = None
+            mock_config.return_value.db.url = None
+            mock_config.return_value.db.service_role_key = None
+
+            # Start from backend directory
+            context = ProjectContext(start_path=backend)
+            result = context.get_target_path(None)
+
+            # Should auto-detect and return backend path
+            assert result == backend

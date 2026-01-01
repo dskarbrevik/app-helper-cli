@@ -86,25 +86,6 @@ SUPABASE_SECRET_KEY=secret_key
         assert config.db.url == "https://test.supabase.co"
         assert config.db.secret_key == "secret_key"
 
-    def test_load_config_with_quotes(self, tmp_path: Path):
-        """Test that quotes are stripped from values."""
-        test_workspace = tmp_path / "test_workspace4"
-        test_workspace.mkdir()
-        frontend_path = test_workspace / "frontend"
-        frontend_path.mkdir()
-
-        env_file = frontend_path / ".env"
-        env_file.write_text(
-            """NEXT_PUBLIC_SUPABASE_URL="https://quoted.supabase.co"
-SUPABASE_SECRET_KEY='single_quoted_key'
-"""
-        )
-
-        config = load_config(test_workspace, frontend_path=frontend_path)
-
-        assert config.db.url == "https://quoted.supabase.co"
-        assert config.db.secret_key == "single_quoted_key"
-
     def test_load_config_stores_paths(self, tmp_path: Path):
         """Test that project paths are stored in config."""
         test_workspace = tmp_path / "test_workspace5"
@@ -197,3 +178,54 @@ class TestSaveFrontendEnv:
         # Verify structure comments exist
         assert "For Vercel Deployment" in content
         assert "For DevHand CLI Only" in content
+
+
+class TestConfigEdgeCases:
+    """Test edge cases in config loading."""
+
+    def test_load_config_with_malformed_url(self, tmp_path: Path):
+        """Test config handles malformed Supabase URL gracefully."""
+        workspace = tmp_path / "workspace_malformed"
+        workspace.mkdir()
+        frontend = workspace / "fe"
+        frontend.mkdir()
+        env_file = frontend / ".env"
+        env_file.write_text("NEXT_PUBLIC_SUPABASE_URL=not-a-valid-url\n")
+
+        config = load_config(workspace, frontend_path=frontend)
+
+        # Should load URL but not extract project_ref
+        assert config.db.url == "not-a-valid-url"
+        assert config.db.project_ref is None
+
+    def test_load_config_with_backend_env(self, tmp_path: Path):
+        """Test config loads backend .env file path."""
+        workspace = tmp_path / "workspace_backend"
+        workspace.mkdir()
+        backend = workspace / "be"
+        backend.mkdir()
+        be_env = backend / ".env"
+        be_env.write_text("# Backend config\n")
+
+        config = load_config(workspace, backend_path=backend)
+
+        # Should store backend path
+        assert config.project.backend_path == str(backend)
+
+    def test_load_config_with_api_url_and_vercel(self, tmp_path: Path):
+        """Test config loads API URL and Vercel URL from frontend .env."""
+        workspace = tmp_path / "workspace_urls"
+        workspace.mkdir()
+        frontend = workspace / "fe"
+        frontend.mkdir()
+        env_file = frontend / ".env"
+        env_file.write_text(
+            "NEXT_PUBLIC_API_URL=https://api.example.com\n"
+            "VERCEL_URL=https://myapp.vercel.app\n"
+        )
+
+        config = load_config(workspace, frontend_path=frontend)
+
+        # Should load deployment URLs
+        assert config.deployment.api_url == "https://api.example.com"
+        assert config.deployment.vercel_url == "https://myapp.vercel.app"

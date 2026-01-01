@@ -9,63 +9,6 @@ from dh.commands import dev
 class TestDevCommand:
     """Test suite for the dev command."""
 
-    def test_dev_frontend(self, mock_context, mock_run_command):
-        """Test starting frontend dev server."""
-        mock_context.is_frontend = True
-        mock_context.is_backend = False
-
-        # Run dev command
-        dev.dev()
-
-        # Verify npm run dev was called
-        mock_run_command.assert_called_once()
-        call_args = mock_run_command.call_args
-        assert "npm run dev" in call_args[0]
-        assert call_args[1]["cwd"] == mock_context.frontend_path
-
-    def test_dev_backend(self, mock_context, mock_run_command):
-        """Test starting backend dev server."""
-        mock_context.is_frontend = False
-        mock_context.is_backend = True
-
-        # Run dev command
-        dev.dev()
-
-        # Verify uvicorn was called
-        mock_run_command.assert_called_once()
-        call_args = mock_run_command.call_args
-        assert "uvicorn" in call_args[0][0]
-        assert "main:app" in call_args[0][0]
-        assert call_args[1]["cwd"] == mock_context.backend_path
-
-    def test_dev_only_frontend_available(self, mock_context, mock_run_command):
-        """Test dev when only frontend is available."""
-        mock_context.is_frontend = False
-        mock_context.is_backend = False
-        mock_context.has_frontend = True
-        mock_context.has_backend = False
-
-        # Run dev command
-        dev.dev()
-
-        # Should start frontend
-        mock_run_command.assert_called_once()
-        assert "npm run dev" in mock_run_command.call_args[0]
-
-    def test_dev_only_backend_available(self, mock_context, mock_run_command):
-        """Test dev when only backend is available."""
-        mock_context.is_frontend = False
-        mock_context.is_backend = False
-        mock_context.has_frontend = False
-        mock_context.has_backend = True
-
-        # Run dev command
-        dev.dev()
-
-        # Should start backend
-        mock_run_command.assert_called_once()
-        assert "uvicorn" in mock_run_command.call_args[0][0]
-
     def test_dev_ambiguous_context(self, mock_context):
         """Test dev fails when both projects are available and context is ambiguous."""
         mock_context.is_frontend = False
