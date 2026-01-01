@@ -5,7 +5,7 @@ from importlib.metadata import version
 import typer
 from rich.console import Console
 
-from dh.commands import build, clean, db, dev, setup, validate
+from dh.commands import build, clean, db, dev, make, setup, validate
 
 app = typer.Typer(
     name="dh",
@@ -31,8 +31,9 @@ app.command(name="build")(build.build)
 app.command(name="run")(build.run)
 app.command(name="clean")(clean.clean)
 
-# Register db as a subcommand group (has multiple subcommands)
+# Register subcommand groups
 app.add_typer(db.app, name="db", help="Database management")
+app.add_typer(make.app, name="make", help="Generate project artifacts")
 
 
 def version_callback(value: bool) -> None:

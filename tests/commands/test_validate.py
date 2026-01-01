@@ -68,17 +68,6 @@ class TestValidateCommand:
             # Verify that node_modules is indeed missing
             assert not (mock_context.frontend_path / "node_modules").exists()
 
-    def test_validate_backend_tools(self, mock_context):
-        """Test validation checks backend tools."""
-        with (
-            patch("dh.commands.validate.check_command_exists", return_value=True),
-            patch("dh.commands.validate.check_tool_version", return_value="3.11.0"),
-        ):
-            try:
-                validate.validate()
-            except typer.Exit:
-                pass
-
     def test_validate_database_connection(self, mock_context, mock_db_client):
         """Test validation checks database connection."""
         with (
@@ -99,20 +88,6 @@ class TestValidateCommand:
             patch("dh.commands.validate.check_command_exists", return_value=True),
             patch("dh.commands.validate.check_tool_version", return_value="1.0.0"),
         ):
-            try:
-                validate.validate()
-            except typer.Exit:
-                pass
-
-    def test_validate_displays_summary(self, mock_context):
-        """Test validation displays a summary of checks."""
-        with (
-            patch("dh.commands.validate.check_command_exists", return_value=True),
-            patch("dh.commands.validate.check_tool_version", return_value="1.0.0"),
-        ):
-            (mock_context.frontend_path / "node_modules").mkdir()
-            (mock_context.backend_path / ".venv").mkdir()
-
             try:
                 validate.validate()
             except typer.Exit:

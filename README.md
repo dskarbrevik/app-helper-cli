@@ -1,5 +1,10 @@
 # DevHand CLI
 
+[![PyPI](https://img.shields.io/pypi/v/devhand)](https://pypi.org/project/devhand/)
+[![Python](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![Coverage](https://img.shields.io/badge/coverage-69%25-brightgreen)](htmlcov/index.html)
+[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+
 Context-aware CLI tool to improve developer experience for full-stack webapps.
 
 ## Installation

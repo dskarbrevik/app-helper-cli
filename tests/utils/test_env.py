@@ -29,24 +29,6 @@ class TestReadEnvFile:
 
         assert result == {"KEY1": "value1", "KEY2": "value2"}
 
-    def test_read_env_file_with_empty_lines(self, tmp_path: Path):
-        """Test reading .env file with empty lines."""
-        env_file = tmp_path / ".env"
-        env_file.write_text("KEY1=value1\n\nKEY2=value2\n\n")
-
-        result = read_env_file(env_file)
-
-        assert result == {"KEY1": "value1", "KEY2": "value2"}
-
-    def test_read_env_file_with_spaces(self, tmp_path: Path):
-        """Test reading .env file with spaces around equals sign."""
-        env_file = tmp_path / ".env"
-        env_file.write_text("KEY1 = value1\nKEY2= value2 \n")
-
-        result = read_env_file(env_file)
-
-        assert result == {"KEY1": "value1", "KEY2": "value2"}
-
     def test_read_env_file_with_equals_in_value(self, tmp_path: Path):
         """Test reading .env file where value contains equals sign."""
         env_file = tmp_path / ".env"

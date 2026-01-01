@@ -73,6 +73,7 @@ def mock_get_context(mock_context, monkeypatch):
     monkeypatch.setattr("dh.commands.clean.get_context", _mock_get_context)
     monkeypatch.setattr("dh.commands.db.get_context", _mock_get_context)
     monkeypatch.setattr("dh.commands.dev.get_context", _mock_get_context)
+    monkeypatch.setattr("dh.commands.make.get_context", _mock_get_context)
     monkeypatch.setattr("dh.commands.setup.get_context", _mock_get_context)
     monkeypatch.setattr("dh.commands.validate.get_context", _mock_get_context)
 
