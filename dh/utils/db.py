@@ -142,11 +142,88 @@ class DatabaseClient:
             console.print(f"Could not verify table {table_name}: {e}", style="dim")
             return False
 
-    def sync_allowed_users(self, emails: list[str]) -> dict[str, int]:
+    def ensure_allowed_users_table(self) -> bool:
+        """Ensure the allowed_users table exists with proper RLS policies.
+
+        Creates the table if it doesn't exist, with:
+        - id: serial primary key
+        - user_id: uuid referencing auth.users(id)
+        - created_at: timestamp with default
+        - RLS policies for authenticated users to read their own row
+
+        Returns True if table exists or was created successfully.
+        """
+        # Check if table already exists
+        if self.table_exists("allowed_users"):
+            console.print("✅ allowed_users table exists", style="green")
+            return True
+
+        console.print("📝 Creating allowed_users table...", style="blue")
+
+        # SQL to create the allowed_users table with RLS
+        create_table_sql = """
+-- Create the allowed_users table
+CREATE TABLE IF NOT EXISTS public.allowed_users (
+    id SERIAL PRIMARY KEY,
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(user_id)
+);
+
+-- Enable Row Level Security
+ALTER TABLE public.allowed_users ENABLE ROW LEVEL SECURITY;
+
+-- Policy: Users can read their own allowed_users row
+-- This allows the frontend middleware to check if a user is allowed
+CREATE POLICY "Users can view own allowed status"
+    ON public.allowed_users
+    FOR SELECT
+    USING (auth.uid() = user_id);
+
+-- Policy: Service role can manage all rows (for admin operations)
+-- Note: Service role bypasses RLS by default, but explicit policy for clarity
+CREATE POLICY "Service role can manage allowed_users"
+    ON public.allowed_users
+    FOR ALL
+    USING (auth.jwt() ->> 'role' = 'service_role');
+
+-- Grant necessary permissions
+GRANT SELECT ON public.allowed_users TO authenticated;
+GRANT ALL ON public.allowed_users TO service_role;
+GRANT USAGE, SELECT ON SEQUENCE public.allowed_users_id_seq TO service_role;
+"""
+
+        # Execute the migration
+        success = self._execute_sql(create_table_sql)
+
+        if success:
+            console.print(
+                "✅ allowed_users table created with RLS policies", style="green"
+            )
+        else:
+            console.print("❌ Failed to create allowed_users table", style="red")
+
+        return success
+
+    def sync_allowed_users(
+        self, emails: list[str], ensure_table: bool = True
+    ) -> dict[str, int]:
         """Sync a list of emails to the allowed_users table.
+
+        Args:
+            emails: List of email addresses to sync
+            ensure_table: If True, create table if it doesn't exist
 
         Returns dict with counts: {'added': n, 'skipped': n, 'not_found': n}
         """
+        # Ensure table exists before syncing
+        if ensure_table:
+            if not self.ensure_allowed_users_table():
+                console.print(
+                    "❌ Cannot sync users - table creation failed", style="red"
+                )
+                return {"added": 0, "skipped": 0, "not_found": 0}
+
         stats = {"added": 0, "skipped": 0, "not_found": 0}
 
         for email in emails:
