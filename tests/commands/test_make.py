@@ -97,10 +97,10 @@ class TestMakeEnvCommand:
         # Verify .env was created
         assert env_path.exists()
 
-        # Verify it contains expected variables
+        # Verify it contains expected variables (same names as frontend)
         content = env_path.read_text()
-        assert "SUPABASE_URL" in content
-        assert "SUPABASE_KEY" in content
+        assert "NEXT_PUBLIC_SUPABASE_URL" in content
+        assert "NEXT_PUBLIC_SUPABASE_KEY" in content
 
     def test_make_env_preserves_existing_values(self, mock_context):
         """Test that existing .env values are preserved."""

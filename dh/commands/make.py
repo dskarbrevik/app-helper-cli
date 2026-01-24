@@ -58,12 +58,13 @@ FRONTEND_ENV_VARS = {
 }
 
 # Expected environment variables for backend
+# Using same names as frontend for consistency across repos
 BACKEND_ENV_VARS = {
-    "SUPABASE_URL": {
+    "NEXT_PUBLIC_SUPABASE_URL": {
         "description": "Supabase project URL",
         "section": "railway",
     },
-    "SUPABASE_KEY": {
+    "NEXT_PUBLIC_SUPABASE_KEY": {
         "description": "Supabase service_role key (for backend operations)",
         "section": "railway",
     },
