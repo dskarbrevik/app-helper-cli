@@ -128,11 +128,69 @@ def load_config(
             if "VERCEL_URL" in fe_env:
                 config_data["deployment"]["vercel_url"] = fe_env["VERCEL_URL"]
 
-    # Load from backend .env if needed (for future use)
+    # Load from backend .env (same var names for consistency)
     if backend_path:
         be_env_path = backend_path / ".env"
-        _load_env_file(be_env_path)
-        # Backend-specific config can be added here as needed
+        be_env = _load_env_file(be_env_path)
+
+        if be_env:
+            # Only set if not already set from frontend
+            if "NEXT_PUBLIC_SUPABASE_URL" in be_env and not config_data["db"].get(
+                "url"
+            ):
+                config_data["db"]["url"] = be_env["NEXT_PUBLIC_SUPABASE_URL"]
+                match = re.search(
+                    r"https://([^.]+)\.supabase\.co", be_env["NEXT_PUBLIC_SUPABASE_URL"]
+                )
+                if match:
+                    config_data["db"]["project_ref"] = match.group(1)
+
+            if "NEXT_PUBLIC_SUPABASE_KEY" in be_env and not config_data["db"].get(
+                "public_key"
+            ):
+                config_data["db"]["public_key"] = be_env["NEXT_PUBLIC_SUPABASE_KEY"]
+
+            if "SUPABASE_SECRET_KEY" in be_env and not config_data["db"].get(
+                "secret_key"
+            ):
+                config_data["db"]["secret_key"] = be_env["SUPABASE_SECRET_KEY"]
+
+    # Load from workspace root .env as fallback
+    root_env_path = workspace_root / ".env"
+    if root_env_path.exists():
+        root_env = _load_env_file(root_env_path)
+
+        if root_env:
+            if "NEXT_PUBLIC_SUPABASE_URL" in root_env and not config_data["db"].get(
+                "url"
+            ):
+                config_data["db"]["url"] = root_env["NEXT_PUBLIC_SUPABASE_URL"]
+                match = re.search(
+                    r"https://([^.]+)\.supabase\.co",
+                    root_env["NEXT_PUBLIC_SUPABASE_URL"],
+                )
+                if match:
+                    config_data["db"]["project_ref"] = match.group(1)
+
+            if "NEXT_PUBLIC_SUPABASE_KEY" in root_env and not config_data["db"].get(
+                "public_key"
+            ):
+                config_data["db"]["public_key"] = root_env["NEXT_PUBLIC_SUPABASE_KEY"]
+
+            if "SUPABASE_SECRET_KEY" in root_env and not config_data["db"].get(
+                "secret_key"
+            ):
+                config_data["db"]["secret_key"] = root_env["SUPABASE_SECRET_KEY"]
+
+            if "SUPABASE_DB_PASSWORD" in root_env and not config_data["db"].get(
+                "password"
+            ):
+                config_data["db"]["password"] = root_env["SUPABASE_DB_PASSWORD"]
+
+            if "SUPABASE_ACCESS_TOKEN" in root_env and not config_data["db"].get(
+                "access_token"
+            ):
+                config_data["db"]["access_token"] = root_env["SUPABASE_ACCESS_TOKEN"]
 
     # Store paths
     if frontend_path:
