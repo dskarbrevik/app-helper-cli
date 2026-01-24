@@ -114,9 +114,34 @@ class TestMakeEnvCommand:
 
         make.env(target="frontend", force=False)
 
-        # Verify existing value was preserved
+        # Verify existing value was preserved (exact line should still be there)
         content = env_path.read_text()
-        assert "https://existing.supabase.co" in content
+        assert "NEXT_PUBLIC_SUPABASE_URL=https://existing.supabase.co" in content
+        # Verify new variables were added
+        assert "NEXT_PUBLIC_SUPABASE_KEY" in content
+
+    def test_make_env_preserves_custom_variables(self, mock_context):
+        """Test that custom variables not in template are preserved."""
+        mock_context.is_frontend = True
+        mock_context.is_backend = False
+
+        env_path = mock_context.frontend_path / ".env"
+
+        # Create existing .env with custom variables
+        original_content = """# My custom config
+CUSTOM_VAR=my-custom-value
+MY_API_KEY=secret123
+NEXT_PUBLIC_SUPABASE_URL=https://existing.supabase.co
+"""
+        env_path.write_text(original_content)
+
+        make.env(target="frontend", force=False)
+
+        # Verify all custom content is preserved
+        content = env_path.read_text()
+        assert "CUSTOM_VAR=my-custom-value" in content
+        assert "MY_API_KEY=secret123" in content
+        assert "# My custom config" in content
         # Verify new variables were added
         assert "NEXT_PUBLIC_SUPABASE_KEY" in content
 
@@ -132,10 +157,10 @@ class TestMakeEnvCommand:
 
         make.env(target="frontend", force=True)
 
-        # Verify value was overwritten with placeholder
+        # Verify value was overwritten with empty value
         content = env_path.read_text()
         assert "https://existing.supabase.co" not in content
-        assert "https://your-project.supabase.co" in content
+        assert "NEXT_PUBLIC_SUPABASE_URL=\n" in content
 
     def test_make_env_auto_detect_frontend(self, mock_context):
         """Test auto-detection when in frontend directory."""
