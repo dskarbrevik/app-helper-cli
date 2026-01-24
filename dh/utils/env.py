@@ -19,7 +19,9 @@ def read_env_file(env_path: Path) -> dict[str, str]:
 
             if "=" in line:
                 key, value = line.split("=", 1)
-                env_vars[key.strip()] = value.strip()
+                # Remove quotes if present
+                value = value.strip().strip('"').strip("'")
+                env_vars[key.strip()] = value
 
     return env_vars
 
