@@ -65,6 +65,12 @@ def token(
         "--export",
         help="Print export command for shell (useful for eval)",
     ),
+    verbose: bool = typer.Option(
+        False,
+        "--verbose",
+        "-V",
+        help="Show verbose information about configuration",
+    ),
 ):
     """Get a JWT access token from Supabase and set it in environment.
 
@@ -86,6 +92,14 @@ def token(
     supabase_url = ctx.config.db.url
     supabase_key = ctx.config.db.public_key
 
+    if verbose:
+        console.print("[dim]Configuration:[/dim]")
+        console.print(f"[dim]  Workspace root: {ctx.workspace_root}[/dim]")
+        console.print(f"[dim]  Frontend path: {ctx.frontend_path}[/dim]")
+        console.print(f"[dim]  Backend path: {ctx.backend_path}[/dim]")
+        console.print(f"[dim]  Supabase URL: {supabase_url}[/dim]")
+        console.print(f"[dim]  Supabase Key: {supabase_key[:20] + '...' if supabase_key else 'None'}[/dim]")
+
     if not supabase_url:
         display_error("NEXT_PUBLIC_SUPABASE_URL not configured")
         display_info("Run 'dh setup' to configure Supabase credentials")
@@ -103,6 +117,12 @@ def token(
             email = env_email
         if not password:
             password = env_password
+
+    if verbose:
+        console.print(f"[dim]  Email: {email}[/dim]")
+        console.print(
+            f"[dim]  Password: {'*' * len(password) if password else 'None'}[/dim]"
+        )
 
     if not email:
         email = prompt_text("Email", default="")
