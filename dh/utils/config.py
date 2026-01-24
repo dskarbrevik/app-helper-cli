@@ -135,7 +135,9 @@ def load_config(
 
         if be_env:
             # Only set if not already set from frontend
-            if "NEXT_PUBLIC_SUPABASE_URL" in be_env and not config_data["db"].get("url"):
+            if "NEXT_PUBLIC_SUPABASE_URL" in be_env and not config_data["db"].get(
+                "url"
+            ):
                 config_data["db"]["url"] = be_env["NEXT_PUBLIC_SUPABASE_URL"]
                 match = re.search(
                     r"https://([^.]+)\.supabase\.co", be_env["NEXT_PUBLIC_SUPABASE_URL"]
@@ -164,7 +166,8 @@ def load_config(
             ):
                 config_data["db"]["url"] = root_env["NEXT_PUBLIC_SUPABASE_URL"]
                 match = re.search(
-                    r"https://([^.]+)\.supabase\.co", root_env["NEXT_PUBLIC_SUPABASE_URL"]
+                    r"https://([^.]+)\.supabase\.co",
+                    root_env["NEXT_PUBLIC_SUPABASE_URL"],
                 )
                 if match:
                     config_data["db"]["project_ref"] = match.group(1)
