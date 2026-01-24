@@ -5,7 +5,7 @@ from importlib.metadata import version
 import typer
 from rich.console import Console
 
-from dh.commands import build, clean, db, dev, make, setup, validate
+from dh.commands import auth, build, clean, db, dev, make, setup, validate
 
 app = typer.Typer(
     name="dh",
@@ -32,6 +32,7 @@ app.command(name="run")(build.run)
 app.command(name="clean")(clean.clean)
 
 # Register subcommand groups
+app.add_typer(auth.app, name="auth", help="Authentication commands")
 app.add_typer(db.app, name="db", help="Database management")
 app.add_typer(make.app, name="make", help="Generate project artifacts")
 

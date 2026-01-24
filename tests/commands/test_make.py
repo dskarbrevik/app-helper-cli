@@ -52,3 +52,202 @@ class TestMakeRequirementsCommand:
                 make.requirements()
 
             assert exc_info.value.exit_code == 1
+
+
+class TestMakeEnvCommand:
+    """Test suite for the make env command."""
+
+    def test_make_env_frontend_creates_file(self, mock_context):
+        """Test creating frontend .env file."""
+        mock_context.is_frontend = True
+        mock_context.is_backend = False
+
+        # Ensure no .env exists
+        env_path = mock_context.frontend_path / ".env"
+        if env_path.exists():
+            env_path.unlink()
+
+        make.env(target="frontend", force=False)
+
+        # Verify .env was created
+        assert env_path.exists()
+
+        # Verify it contains expected variables
+        content = env_path.read_text()
+        assert "NEXT_PUBLIC_SUPABASE_URL" in content
+        assert "NEXT_PUBLIC_SUPABASE_KEY" in content
+        assert "NEXT_PUBLIC_API_URL" in content
+        assert "SUPABASE_SECRET_KEY" in content
+        assert "SUPABASE_DB_PASSWORD" in content
+        assert "SUPABASE_TEST_EMAIL" in content
+        assert "SUPABASE_TEST_PASSWORD" in content
+
+    def test_make_env_backend_creates_file(self, mock_context):
+        """Test creating backend .env file."""
+        mock_context.is_frontend = False
+        mock_context.is_backend = True
+
+        # Ensure no .env exists
+        env_path = mock_context.backend_path / ".env"
+        if env_path.exists():
+            env_path.unlink()
+
+        make.env(target="backend", force=False)
+
+        # Verify .env was created
+        assert env_path.exists()
+
+        # Verify it contains expected variables
+        content = env_path.read_text()
+        assert "SUPABASE_URL" in content
+        assert "SUPABASE_KEY" in content
+
+    def test_make_env_preserves_existing_values(self, mock_context):
+        """Test that existing .env values are preserved."""
+        mock_context.is_frontend = True
+        mock_context.is_backend = False
+
+        env_path = mock_context.frontend_path / ".env"
+
+        # Create existing .env with a value
+        env_path.write_text("NEXT_PUBLIC_SUPABASE_URL=https://existing.supabase.co\n")
+
+        make.env(target="frontend", force=False)
+
+        # Verify existing value was preserved
+        content = env_path.read_text()
+        assert "https://existing.supabase.co" in content
+        # Verify new variables were added
+        assert "NEXT_PUBLIC_SUPABASE_KEY" in content
+
+    def test_make_env_force_overwrites_values(self, mock_context):
+        """Test that --force overwrites existing values."""
+        mock_context.is_frontend = True
+        mock_context.is_backend = False
+
+        env_path = mock_context.frontend_path / ".env"
+
+        # Create existing .env with a value
+        env_path.write_text("NEXT_PUBLIC_SUPABASE_URL=https://existing.supabase.co\n")
+
+        make.env(target="frontend", force=True)
+
+        # Verify value was overwritten with placeholder
+        content = env_path.read_text()
+        assert "https://existing.supabase.co" not in content
+        assert "https://your-project.supabase.co" in content
+
+    def test_make_env_auto_detect_frontend(self, mock_context):
+        """Test auto-detection when in frontend directory."""
+        mock_context.is_frontend = True
+        mock_context.is_backend = False
+        mock_context.has_backend = False
+
+        env_path = mock_context.frontend_path / ".env"
+        if env_path.exists():
+            env_path.unlink()
+
+        # Run without target - should auto-detect frontend
+        make.env(target=None, force=False)
+
+        assert env_path.exists()
+        content = env_path.read_text()
+        assert "NEXT_PUBLIC_SUPABASE_URL" in content
+
+    def test_make_env_auto_detect_backend(self, mock_context):
+        """Test auto-detection when in backend directory."""
+        mock_context.is_frontend = False
+        mock_context.is_backend = True
+        mock_context.has_frontend = False
+
+        env_path = mock_context.backend_path / ".env"
+        if env_path.exists():
+            env_path.unlink()
+
+        # Run without target - should auto-detect backend
+        make.env(target=None, force=False)
+
+        assert env_path.exists()
+        content = env_path.read_text()
+        assert "SUPABASE_URL" in content
+
+    def test_make_env_all_creates_both(self, mock_context):
+        """Test creating both frontend and backend .env files."""
+        fe_env_path = mock_context.frontend_path / ".env"
+        be_env_path = mock_context.backend_path / ".env"
+
+        # Ensure no .env files exist
+        if fe_env_path.exists():
+            fe_env_path.unlink()
+        if be_env_path.exists():
+            be_env_path.unlink()
+
+        make.env(target="all", force=False)
+
+        # Verify both files were created
+        assert fe_env_path.exists()
+        assert be_env_path.exists()
+
+        # Verify correct content in each
+        fe_content = fe_env_path.read_text()
+        be_content = be_env_path.read_text()
+
+        assert "NEXT_PUBLIC_SUPABASE_URL" in fe_content
+        assert "SUPABASE_URL" in be_content
+
+    def test_make_env_ambiguous_context_fails(self, mock_context):
+        """Test that ambiguous context without target fails."""
+        mock_context.is_frontend = False
+        mock_context.is_backend = False
+
+        # Run without target when both exist - should fail
+        with pytest.raises(typer.Exit) as exc_info:
+            make.env(target=None, force=False)
+
+        assert exc_info.value.exit_code == 1
+
+    def test_make_env_no_project_fails(self, mock_context):
+        """Test that running without any project fails."""
+        mock_context.is_frontend = False
+        mock_context.is_backend = False
+        mock_context.has_frontend = False
+        mock_context.has_backend = False
+
+        with pytest.raises(typer.Exit) as exc_info:
+            make.env(target=None, force=False)
+
+        assert exc_info.value.exit_code == 1
+
+    def test_make_env_frontend_target_no_frontend_fails(self, mock_context):
+        """Test that frontend target without frontend project fails."""
+        mock_context.has_frontend = False
+
+        with pytest.raises(typer.Exit) as exc_info:
+            make.env(target="frontend", force=False)
+
+        assert exc_info.value.exit_code == 1
+
+    def test_make_env_backend_target_no_backend_fails(self, mock_context):
+        """Test that backend target without backend project fails."""
+        mock_context.has_backend = False
+
+        with pytest.raises(typer.Exit) as exc_info:
+            make.env(target="backend", force=False)
+
+        assert exc_info.value.exit_code == 1
+
+    def test_make_env_has_section_comments(self, mock_context):
+        """Test that .env file has organized section comments."""
+        mock_context.is_frontend = True
+        mock_context.is_backend = False
+
+        env_path = mock_context.frontend_path / ".env"
+        if env_path.exists():
+            env_path.unlink()
+
+        make.env(target="frontend", force=False)
+
+        content = env_path.read_text()
+        assert "For Vercel Deployment" in content
+        assert "For DevHand CLI Only" in content
+        assert "For Testing" in content

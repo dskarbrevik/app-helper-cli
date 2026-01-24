@@ -52,6 +52,7 @@ def mock_context(tmp_path: Path):
             self.config = Config(
                 db=DatabaseConfig(
                     url="https://test.supabase.co",
+                    public_key="test-public-key",
                     secret_key="test-key",
                     password="test-pass",
                     project_ref="test-ref",
@@ -69,6 +70,7 @@ def mock_get_context(mock_context, monkeypatch):
         return mock_context
 
     monkeypatch.setattr("dh.context.get_context", _mock_get_context)
+    monkeypatch.setattr("dh.commands.auth.get_context", _mock_get_context)
     monkeypatch.setattr("dh.commands.build.get_context", _mock_get_context)
     monkeypatch.setattr("dh.commands.clean.get_context", _mock_get_context)
     monkeypatch.setattr("dh.commands.db.get_context", _mock_get_context)
