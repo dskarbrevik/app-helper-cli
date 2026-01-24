@@ -163,10 +163,14 @@ def _generate_env_file(name: str, path: Path, expected_vars: dict, force: bool) 
     if force:
         # Force mode: rewrite entire file with template
         _write_full_env_file(env_path, name, expected_vars, existing_vars, force=True)
-        console.print(f"[yellow]Overwrote .env with {len(expected_vars)} variables[/yellow]")
+        console.print(
+            f"[yellow]Overwrote .env with {len(expected_vars)} variables[/yellow]"
+        )
     else:
         # Append mode: keep existing content and add missing vars
-        _append_missing_vars(env_path, name, expected_vars, missing_vars, existing_content)
+        _append_missing_vars(
+            env_path, name, expected_vars, missing_vars, existing_content
+        )
         console.print(f"[yellow]Added {len(missing_vars)} missing variables:[/yellow]")
         for key in missing_vars:
             console.print(f"  • {key}")
