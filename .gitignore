@@ -208,3 +208,6 @@ __marimo__/
 
 # DevHand local config (contains secrets)
 .dh.local.toml
+
+# macOS
+.DS_Store
