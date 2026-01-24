@@ -7,6 +7,7 @@ import typer
 from rich.console import Console
 
 from dh.context import get_context
+from dh.utils.env import read_env_file
 from dh.utils.prompts import (
     display_error,
     display_info,
@@ -16,6 +17,33 @@ from dh.utils.prompts import (
 
 app = typer.Typer(help="Authentication commands")
 console = Console()
+
+
+def _get_test_credentials(ctx) -> tuple[str | None, str | None]:
+    """Get test credentials from .env files or environment."""
+    email = os.environ.get("SUPABASE_TEST_EMAIL")
+    password = os.environ.get("SUPABASE_TEST_PASSWORD")
+
+    # Check .env files if not in environment
+    env_paths = []
+    if ctx.frontend_path:
+        env_paths.append(ctx.frontend_path / ".env")
+    if ctx.backend_path:
+        env_paths.append(ctx.backend_path / ".env")
+    if ctx.workspace_root:
+        env_paths.append(ctx.workspace_root / ".env")
+
+    for env_path in env_paths:
+        if env_path.exists():
+            env_vars = read_env_file(env_path)
+            if not email and "SUPABASE_TEST_EMAIL" in env_vars:
+                email = env_vars["SUPABASE_TEST_EMAIL"]
+            if not password and "SUPABASE_TEST_PASSWORD" in env_vars:
+                password = env_vars["SUPABASE_TEST_PASSWORD"]
+            if email and password:
+                break
+
+    return email, password
 
 
 @app.command()
@@ -68,18 +96,20 @@ def token(
         display_info("Run 'dh setup' to configure Supabase credentials")
         raise typer.Exit(1)
 
-    # Get email from: CLI arg > env var > prompt
-    if not email:
-        email = os.environ.get("SUPABASE_TEST_EMAIL")
+    # Get email/password from: CLI arg > env var / .env file > prompt
+    if not email or not password:
+        env_email, env_password = _get_test_credentials(ctx)
+        if not email:
+            email = env_email
+        if not password:
+            password = env_password
+
     if not email:
         email = prompt_text("Email", default="")
         if not email:
             display_error("Email is required")
             raise typer.Exit(1)
 
-    # Get password from: CLI arg > env var > prompt
-    if not password:
-        password = os.environ.get("SUPABASE_TEST_PASSWORD")
     if not password:
         password = prompt_text("Password", password=True, default="")
         if not password:
