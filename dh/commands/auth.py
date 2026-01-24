@@ -98,7 +98,9 @@ def token(
         console.print(f"[dim]  Frontend path: {ctx.frontend_path}[/dim]")
         console.print(f"[dim]  Backend path: {ctx.backend_path}[/dim]")
         console.print(f"[dim]  Supabase URL: {supabase_url}[/dim]")
-        console.print(f"[dim]  Supabase Key: {supabase_key[:20] + '...' if supabase_key else 'None'}[/dim]")
+        console.print(
+            f"[dim]  Supabase Key: {supabase_key[:20] + '...' if supabase_key else 'None'}[/dim]"
+        )
 
     if not supabase_url:
         display_error("NEXT_PUBLIC_SUPABASE_URL not configured")
